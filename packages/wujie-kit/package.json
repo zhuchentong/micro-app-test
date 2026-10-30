@@ -1,0 +1,23 @@
+{
+  "name": "@repo/wujie-kit",
+  "version": "0.0.0",
+  "private": true,
+  "description": "wujie 微前端契约、类型与主/子应用运行时 helper(内部包,源码直出)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./host": "./src/host.ts",
+    "./sub": "./src/sub.ts"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

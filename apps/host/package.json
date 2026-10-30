@@ -1,0 +1,27 @@
+{
+  "name": "host",
+  "version": "0.0.0",
+  "private": true,
+  "description": "wujie 微前端主应用",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@repo/store": "workspace:*",
+    "@repo/wujie-kit": "workspace:*",
+    "pinia": "catalog:",
+    "vue": "catalog:",
+    "wujie": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@vizejs/vite-plugin": "catalog:",
+    "@vizejs/vite-plugin-musea": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

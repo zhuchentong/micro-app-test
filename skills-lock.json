@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "wujie": {
+      "source": "wujie-micro/wujie-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "5b9643a6d05c2b43861d2925b793cc5cd1fd4d677215c5b1ca382a6378ee0659"
+    }
+  }
+}

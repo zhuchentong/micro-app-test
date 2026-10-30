@@ -1,0 +1,27 @@
+{
+  "name": "sub-app-b",
+  "version": "0.0.0",
+  "private": true,
+  "description": "wujie 微前端子应用 B",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "build": "vp build",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@repo/store": "workspace:*",
+    "@repo/wujie-kit": "workspace:*",
+    "pinia": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "@vizejs/vite-plugin": "catalog:",
+    "@vizejs/vite-plugin-musea": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

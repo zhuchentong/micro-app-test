@@ -1,0 +1,31 @@
+{
+  "name": "test_40",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ready": "vp run check && vp run -r test && vp run build",
+    "dev": "vp run -r dev",
+    "dev:host": "vp run host#dev",
+    "dev:sub-a": "vp run sub-app-a#dev",
+    "dev:sub-b": "vp run sub-app-b#dev",
+    "build": "vp -C apps/host build && vp -C apps/sub-app-a build && vp -C apps/sub-app-b build && vp -C packages/utils pack",
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "@vizejs/vite-plugin": "catalog:",
+    "oxlint-plugin-vize": "catalog:",
+    "vite-plus": "catalog:",
+    "vize": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.16.1",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

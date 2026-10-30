@@ -1,0 +1,25 @@
+{
+  "name": "@repo/store",
+  "version": "0.0.0",
+  "private": true,
+  "description": "可复用 pinia store 层:共享 store 定义与 host→子应用单向同步(内部包,源码直出)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./host": "./src/host.ts",
+    "./sub": "./src/sub.ts"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@repo/wujie-kit": "workspace:*",
+    "pinia": "catalog:",
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript-config": "workspace:*",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}
