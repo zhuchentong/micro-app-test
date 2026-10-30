@@ -10,5 +10,15 @@ export default createRouter({
       name: "about",
       component: () => import("../pages/About.vue"),
     },
+    {
+      path: "/products",
+      name: "products",
+      component: () => import("../pages/Products.vue"),
+    },
+    {
+      path: "/product/:id",
+      name: "product-detail",
+      component: () => import("../pages/ProductDetail.vue"),
+    },
   ],
 });

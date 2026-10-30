@@ -1,7 +1,14 @@
 import { expect, expectTypeOf, test } from "vite-plus/test";
 import { appEvents } from "../events.ts";
-import { createMicroAppStarter, parseLocation } from "../host.ts";
-import type { StartAppOptions } from "../host.ts";
+import {
+  buildTabKey,
+  buildTabUrl,
+  createMicroAppStarter,
+  parseLocation,
+  parseTabUrl,
+  startTabApp,
+} from "../host.ts";
+import type { StartAppOptions, TabAppOptions } from "../host.ts";
 import { useHostProps } from "../sub.ts";
 import type { HostProps, MicroApp } from "../types.ts";
 
@@ -112,4 +119,88 @@ test("useHostProps 类型推断为 HostProps | undefined", () => {
   expectTypeOf(useHostProps()).toEqualTypeOf<HostProps | undefined>();
   // 泛型扩展:注入额外字段的子应用可自定义形状,类型不丢失
   useHostProps<{ user: HostProps["user"]; theme: string; extra: number }>();
+});
+
+test("buildTabKey 确定性:query 键序无关,token 不参与", () => {
+  expect(buildTabKey("sub-a", "/product", { id: "1", name: "x" })).toBe(
+    buildTabKey("sub-a", "/product", { name: "x", id: "1" }),
+  );
+  expect(buildTabKey("sub-a", "/product", { id: "1", token: "t" })).toBe(
+    buildTabKey("sub-a", "/product", { id: "1" }),
+  );
+  expect(buildTabKey("sub-a", "/product", { id: "1" })).not.toBe(
+    buildTabKey("sub-a", "/product", { id: "2" }),
+  );
+});
+
+test("parseTabUrl 解析 /{app}/{page}?{query},未注册 app 返回空", () => {
+  expect(parseTabUrl("/sub-a/product?id=1", apps)).toEqual({
+    app: "sub-a",
+    page: "/product",
+    query: { id: "1" },
+  });
+  expect(parseTabUrl("/sub-a", apps)).toEqual({ app: "sub-a", page: "/", query: undefined });
+  expect(parseTabUrl("/unknown/x", apps)).toEqual({});
+  expect(parseTabUrl("/sub-a/product?token=t&id=1", apps)).toEqual({
+    app: "sub-a",
+    page: "/product",
+    query: { id: "1" },
+  });
+});
+
+test("parseTabUrl 与 buildTabUrl 往返一致", () => {
+  const url = buildTabUrl(apps[0]!.domain, "/product", { id: "1" });
+  expect(url).toBe("http://localhost:7201/product?id=1");
+  // buildTabKey 基于同样语义,重建/去重共用同一映射;
+  // parseTabUrl 解析的是主应用地址栏(//{app}/{page}?{query}),非子应用 url
+  const parsed = parseTabUrl("/sub-a/product?id=1", apps);
+  expect(buildTabKey(parsed.app!, parsed.page!, parsed.query)).toBe(
+    buildTabKey("sub-a", "/product", { id: "1" }),
+  );
+});
+
+test("startTabApp 以唯一 name 启动,注入 tab props,关闭 sync", () => {
+  const calls: StartAppOptions[] = [];
+  const options: TabAppOptions = {
+    startApp: (o) => {
+      calls.push(o);
+    },
+    apps,
+    baseProps: () => ({ user: { id: "u1", name: "宿主" }, theme: "dark" }),
+    tab: {
+      id: "sub-a|/product?id=1",
+      app: "sub-a",
+      page: "/product",
+      query: { id: "1" },
+      el: "#host-tab-1",
+    },
+  };
+
+  startTabApp(options);
+
+  expect(calls).toHaveLength(1);
+  expect(calls[0].name).toMatch(/^sub-a-tab-[0-9a-z]+$/);
+  expect(calls[0].name).not.toContain("/");
+  expect(calls[0].url).toBe("http://localhost:7201/product?id=1");
+  expect(calls[0].el).toBe("#host-tab-1");
+  expect(calls[0].sync).toBe(false);
+  expect(calls[0].alive).toBe(true);
+  expect(calls[0].props).toEqual({
+    user: { id: "u1", name: "宿主" },
+    theme: "dark",
+    tab: { id: "sub-a|/product?id=1", app: "sub-a", page: "/product" },
+  });
+});
+
+test("startTabApp 未注册 tab.app 不调用 startApp", () => {
+  const calls: StartAppOptions[] = [];
+  startTabApp({
+    startApp: (o) => {
+      calls.push(o);
+    },
+    apps,
+    baseProps: { user: { id: "u1", name: "宿主" }, theme: "light" },
+    tab: { id: "x", app: "nope", page: "/", el: "#host-tab-x" },
+  });
+  expect(calls).toHaveLength(0);
 });

@@ -10,12 +10,13 @@ const route = useRoute();
 const themeStore = useThemeStore();
 const userStore = useUserStore();
 
-/** 路由变化时向主应用同步标题(bus → host:title) */
+/** Tab 内导航同步(替代 wujie sync):路由变化上报主应用,标题走 tab 契约 */
 watch(
-  () => route.path,
-  (path) => {
+  () => [route.path, route.query] as const,
+  ([path, query]) => {
+    subBus.syncTabRoute(path, query);
     const name = path === "/about" ? "关于" : "首页";
-    subBus.syncTitle(`${appConfig.name} · ${name}`);
+    subBus.syncTabTitle(`${appConfig.name} · ${name}`);
   },
   { immediate: true },
 );

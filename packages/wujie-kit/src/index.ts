@@ -5,5 +5,11 @@
 import "./globals";
 
 export { appEvents } from "./events";
-export type { BroadcastPayload, HostStatePayload } from "./events";
-export type { HostProps, MicroApp, SubAppConfig } from "./types";
+export type {
+  BroadcastPayload,
+  HostStatePayload,
+  TabOpenPayload,
+  TabRoutePayload,
+  TabTitlePayload,
+} from "./events";
+export type { HostProps, MicroApp, SubAppConfig, TabInfo } from "./types";

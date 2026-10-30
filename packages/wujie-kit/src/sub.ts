@@ -1,7 +1,7 @@
 import { ref } from "vue";
 import type { App as VueApp, Ref } from "vue";
 import { appEvents } from "./events";
-import type { BroadcastPayload } from "./events";
+import type { BroadcastPayload, TabOpenPayload, TabRoutePayload, TabTitlePayload } from "./events";
 import type { HostProps, SubAppConfig } from "./types";
 
 /** 是否运行在 wujie 环境中 */
@@ -23,8 +23,34 @@ export interface SubBus {
   registerBroadcastListener(): void;
   /** 子应用 → 主应用:发送通知 */
   notifyHost(text: string): void;
-  /** 子应用 → 主应用:同步标题 */
+  /** 子应用 → 主应用:同步标题(单容器模式遗留;Tab 模式用 syncTabTitle) */
   syncTitle(title: string): void;
+  /** 子应用 → 主应用:请求打开 Tab(幂等,同参数复用;非 wujie 环境无操作) */
+  openTab(page: string, query?: Record<string, string>): void;
+  /** 子应用 → 主应用:回报当前 Tab 内路由(替代 sync;query 可直接传 useRoute().query;非 wujie 环境无操作) */
+  syncTabRoute(page: string, query?: RouteQuery): void;
+  /** 子应用 → 主应用:回报 Tab 标题(host 仅信任激活 Tab;非 wujie 环境无操作) */
+  syncTabTitle(title: string): void;
+}
+
+/** 读取注入的 Tab 身份(props 在 startApp 时一次性注入,动态读取避免时序差异) */
+function currentTab(): NonNullable<HostProps["tab"]> | null {
+  const props =
+    typeof window !== "undefined" ? (window.$wujie?.props as HostProps | undefined) : undefined;
+  return props?.tab ?? null;
+}
+
+/** vue-router 的 query 值形态(结构化匹配,避免本包依赖 vue-router) */
+type RouteQuery = Record<string, string | (string | null)[] | null> | undefined;
+
+/** Tab 内 query 上报前的规整(仅保留字符串值,多值 query 取最近一次) */
+function normalizeQuery(query: RouteQuery): Record<string, string> | undefined {
+  if (!query) return undefined;
+  const entries = Object.entries(query).map(([key, value]): [string, string] => [
+    key,
+    Array.isArray(value) ? String(value.at(-1) ?? "") : String(value ?? ""),
+  ]);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
 /**
@@ -41,6 +67,9 @@ export function createSubBus(config: SubAppConfig): SubBus {
     registerBroadcastListener(): void {
       if (broadcastRegistered) return;
       window.$wujie?.bus?.$on(appEvents.broadcast, (data?: BroadcastPayload) => {
+        // 定向广播:与本实例 Tab 无关的消息直接丢弃(多实例保活下全实例都在监听)
+        const myTabId = currentTab()?.id;
+        if (data?.target && myTabId && data.target !== myTabId) return;
         lastBroadcast.value = data?.text ?? "";
       });
       broadcastRegistered = true;
@@ -50,6 +79,24 @@ export function createSubBus(config: SubAppConfig): SubBus {
     },
     syncTitle(title: string): void {
       window.$wujie?.bus?.$emit(appEvents.title, title);
+    },
+    openTab(page: string, query?: Record<string, string>): void {
+      const tab = currentTab();
+      if (!tab) return;
+      const payload: TabOpenPayload = { app: tab.app, page, query };
+      window.$wujie?.bus?.$emit(appEvents.tabOpen, payload);
+    },
+    syncTabRoute(page: string, query?: RouteQuery): void {
+      const tab = currentTab();
+      if (!tab) return;
+      const payload: TabRoutePayload = { id: tab.id, page, query: normalizeQuery(query) };
+      window.$wujie?.bus?.$emit(appEvents.tabRoute, payload);
+    },
+    syncTabTitle(title: string): void {
+      const tab = currentTab();
+      if (!tab) return;
+      const payload: TabTitlePayload = { id: tab.id, title };
+      window.$wujie?.bus?.$emit(appEvents.tabTitle, payload);
     },
   };
 }

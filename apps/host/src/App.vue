@@ -2,10 +2,12 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { bus } from "wujie";
 import { appEvents } from "@repo/wujie-kit";
+import type { TabOpenPayload, TabRoutePayload, TabTitlePayload } from "@repo/wujie-kit";
 import { useThemeStore } from "@repo/store";
 import AppBadge from "./components/AppBadge.vue";
 import { apps } from "./apps";
-import { parseLocation, startMicroApp } from "./wujie";
+import type { MenuEntry } from "./apps";
+import { useTabsStore } from "./stores/tabs";
 
 interface LogEntry {
   id: number;
@@ -14,9 +16,9 @@ interface LogEntry {
   text: string;
 }
 
-// 主题状态(pinia 已在 main.ts 安装,setup 内直接使用)
+// 主题状态(pinia 已在 main.ts 安装,setup 内直接使用);tabs store 依赖 wujie.ts 先 initWujie
 const themeStore = useThemeStore();
-const activeKey = ref("");
+const tabs = useTabsStore();
 const logs = ref<LogEntry[]>([]);
 const broadcastText = ref("");
 let logId = 0;
@@ -26,45 +28,58 @@ function addLog(source: string, text: string): void {
   if (logs.value.length > 50) logs.value.pop();
 }
 
-function switchApp(key: string): void {
-  if (key === activeKey.value) return;
-  activeKey.value = key;
-  const app = apps.find((item) => item.key === key);
-  // 保活模式下切回的子应用不会重新挂载,也就不会重发 title 事件,host 兜底设置标题
-  document.title = `无界 MVP · ${app?.name ?? key}`;
-  startMicroApp(key);
-  addLog("host", `切换到 ${app?.name ?? key}`);
+function openFromMenu(appKey: string, menu: MenuEntry): void {
+  tabs.openTab(appKey, menu.path, menu.query, menu.label);
+  addLog("host", `打开 ${appKey} · ${menu.label}`);
+}
+
+async function closeTab(id: string): Promise<void> {
+  await tabs.closeTab(id);
+  addLog("host", "关闭 Tab");
 }
 
 function broadcast(): void {
   const text = broadcastText.value.trim();
   if (!text) return;
+  // 多实例语义:不携带 target = 广播给所有保活 Tab
   bus.$emit(appEvents.broadcast, { text, from: "host" });
   addLog("host", `广播: ${text}`);
   broadcastText.value = "";
 }
 
-function onTitle(title: string): void {
-  document.title = `无界 MVP · ${title}`;
+function onTabOpen(payload?: TabOpenPayload): void {
+  if (!payload) return;
+  tabs.openFromPayload(payload);
+  addLog("host", `tab-open ${payload.app} · ${payload.page}`);
+}
+
+function onTabRoute(payload?: TabRoutePayload): void {
+  if (payload) tabs.applyTabRoute(payload);
+}
+
+function onTabTitle(payload?: TabTitlePayload): void {
+  if (payload) tabs.applyTabTitle(payload);
 }
 
 function onNotify(data: { from: string; text: string }): void {
   addLog(data.from, data.text);
 }
 
-onMounted(() => {
-  bus.$on(appEvents.title, onTitle);
+onMounted(async () => {
+  bus.$on(appEvents.tabOpen, onTabOpen);
+  bus.$on(appEvents.tabRoute, onTabRoute);
+  bus.$on(appEvents.tabTitle, onTabTitle);
   bus.$on(appEvents.notify, onNotify);
 
-  const { app, path } = parseLocation();
-  activeKey.value = app ?? apps[0]!.key;
-  document.title = `无界 MVP · ${apps.find((item) => item.key === activeKey.value)?.name}`;
-  startMicroApp(activeKey.value, path ?? "/");
-  addLog("host", `已启动 ${apps.find((item) => item.key === activeKey.value)?.name}`);
+  // 启动顺序:子应用实例的 Tab 事件已在事件契约中,listener 先注册再恢复 Tab
+  tabs.init(apps);
+  addLog("host", "Tabs 已恢复");
 });
 
 onUnmounted(() => {
-  bus.$off(appEvents.title, onTitle);
+  bus.$off(appEvents.tabOpen, onTabOpen);
+  bus.$off(appEvents.tabRoute, onTabRoute);
+  bus.$off(appEvents.tabTitle, onTabTitle);
   bus.$off(appEvents.notify, onNotify);
 });
 </script>
@@ -79,20 +94,25 @@ onUnmounted(() => {
       </button>
 
       <nav class="app-list">
-        <button
-          v-for="app in apps"
-          :key="app.key"
-          class="app-item"
-          :class="{ active: app.key === activeKey }"
-          type="button"
-          @click="switchApp(app.key)"
-        >
-          <AppBadge :label="app.name" :color="app.color" :active="app.key === activeKey" />
-        </button>
+        <section v-for="app in apps" :key="app.key" class="app-group">
+          <AppBadge :label="app.name" :color="app.color" />
+          <button
+            v-for="menu in app.menu"
+            :key="app.key + menu.path"
+            class="menu-item"
+            type="button"
+            :class="
+              { active: tabs.activeTab?.app === app.key && tabs.activeTab?.page === menu.path }
+            "
+            @click="openFromMenu(app.key, menu)"
+          >
+            {{ menu.label }}
+          </button>
+        </section>
       </nav>
 
       <section class="broadcast">
-        <h2>广播到当前子应用</h2>
+        <h2>广播到所有 Tab</h2>
         <form @submit.prevent="broadcast">
           <input
             v-model="broadcastText"
@@ -117,8 +137,39 @@ onUnmounted(() => {
       </section>
     </aside>
 
-    <main class="container">
-      <div id="app-container" />
+    <main class="workbench">
+      <div class="tabs-bar">
+        <button
+          v-for="tab in tabs.tabs"
+          :key="tab.id"
+          class="tab"
+          :class="{ active: tab.id === tabs.activeId, cold: tab.state === 'cold' }"
+          type="button"
+          @click="tabs.activate(tab.id)"
+        >
+          <span class="tab-title">{{ tab.title }}</span>
+          <span v-if="tab.state === 'cold'" class="reload-hint" title="实例已释放,激活时重建"
+          >↻</span>
+          <span aria-hidden="true" class="tab-close" @click.stop="closeTab(tab.id)">×</span>
+        </button>
+        <span v-if="tabs.tabs.length === 0" class="tabs-placeholder"
+        >点击左侧菜单打开子应用页面</span>
+      </div>
+
+      <div class="pane-area">
+        <!-- 每 Tab 一个常驻容器,保活实例不卸载,切换只切显隐 -->
+        <div
+          v-for="tab in tabs.tabs"
+          v-show="tab.id === tabs.activeId"
+          :id="`tab-container-${tab.n}`"
+          :key="tab.id"
+          class="tab-pane"
+        />
+        <div v-if="!tabs.activeTab" class="empty-state">
+          <p>未打开任何页面</p>
+          <p class="empty-hint">从左侧菜单进入,或在子应用产品列表中点击产品即可在 Tabs 中打开</p>
+        </div>
+      </div>
     </main>
   </div>
 </template>
@@ -164,27 +215,37 @@ onUnmounted(() => {
 .app-list {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.app-group {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.app-item {
+.menu-item {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 10px 12px;
+  padding: 8px 12px 8px 24px;
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
+  font-size: 14px;
+  color: #374151;
   cursor: pointer;
 }
 
-.app-item:hover {
+.menu-item:hover {
   background: #f3f4f6;
 }
 
-.app-item.active {
+.menu-item.active {
   background: #eef2ff;
   border-color: #c7d2fe;
+  color: #4f46e5;
+  font-weight: 600;
 }
 
 .broadcast {
@@ -245,7 +306,7 @@ onUnmounted(() => {
 
 .logs li {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   font-size: 12px;
   line-height: 1.5;
 }
@@ -272,18 +333,121 @@ onUnmounted(() => {
 .empty {
   font-size: 12px;
   color: #9ca3af;
+  margin: 0;
 }
 
-.container {
+/* 工作台:TabsBar + 每 Tab 容器 */
+.workbench {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-#app-container {
+.tabs-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #e5e7eb;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  background: #eef2ff;
+}
+
+.tab.active {
+  background: #fff;
+  border-color: #c7d2fe;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.tab.cold {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.tab-title {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reload-hint {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.tab-close {
+  padding: 0 2px;
+  border-radius: 4px;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tab-close:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.tabs-placeholder {
+  padding: 7px 4px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.pane-area {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.tab-pane {
   height: 100%;
 }
 
-/* 暗色主题:变量式覆盖 sider 相关配色,保持既有视觉语言 */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.empty-state p,
+.empty-hint {
+  margin: 0;
+}
+
+.empty-hint {
+  font-size: 13px;
+}
+
+/* 暗色主题:变量式覆盖 sider 与 TabsBar 配色,保持既有视觉语言 */
 .layout[data-theme="dark"] .sider {
   background: #111827;
   border-right-color: #1f2937;
@@ -303,13 +467,18 @@ onUnmounted(() => {
   background: #374151;
 }
 
-.layout[data-theme="dark"] .app-item:hover {
+.layout[data-theme="dark"] .menu-item {
+  color: #d1d5db;
+}
+
+.layout[data-theme="dark"] .menu-item:hover {
   background: #1f2937;
 }
 
-.layout[data-theme="dark"] .app-item.active {
+.layout[data-theme="dark"] .menu-item.active {
   background: #312e81;
   border-color: #4338ca;
+  color: #c7d2fe;
 }
 
 .layout[data-theme="dark"] .broadcast h2,
@@ -325,6 +494,31 @@ onUnmounted(() => {
 }
 
 .layout[data-theme="dark"] .time {
+  color: #6b7280;
+}
+
+.layout[data-theme="dark"] .tabs-bar {
+  background: #111827;
+  border-bottom-color: #1f2937;
+}
+
+.layout[data-theme="dark"] .tab {
+  background: #0b1220;
+  border-color: #1f2937;
+  color: #d1d5db;
+}
+
+.layout[data-theme="dark"] .tab:hover {
+  background: #1f2937;
+}
+
+.layout[data-theme="dark"] .tab.active {
+  background: #111827;
+  border-color: #4338ca;
+  color: #c7d2fe;
+}
+
+.layout[data-theme="dark"] .empty-state {
   color: #6b7280;
 }
 </style>

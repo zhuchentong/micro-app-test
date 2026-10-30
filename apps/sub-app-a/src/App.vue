@@ -10,12 +10,18 @@ const route = useRoute();
 const themeStore = useThemeStore();
 const userStore = useUserStore();
 
-/** 路由变化时向主应用同步标题(bus → host:title) */
+/**
+ * Tab 内导航同步(替代 wujie sync):路由变化上报主应用(带 query,身份不变只更新记录);
+ * 标题仅对非详情页兜底 —— 详情页标题由 ProductDetail 按真实产品名回报。
+ */
 watch(
-  () => route.path,
-  (path) => {
-    const name = path === "/about" ? "关于" : "首页";
-    subBus.syncTitle(`${appConfig.name} · ${name}`);
+  () => [route.path, route.query] as const,
+  ([path, query]) => {
+    subBus.syncTabRoute(path, query);
+
+    if (path.startsWith("/product/")) return; // 详情页自报标题
+    const name = path === "/about" ? "关于" : path === "/products" ? "产品" : "首页";
+    subBus.syncTabTitle(`${appConfig.name} · ${name}`);
   },
   { immediate: true },
 );
