@@ -8,3 +8,4 @@ export { createHostStoreSync } from "./host";
 export type { HostStoreSync } from "./host";
 export { createSubStoreSync } from "./sub";
 export type { SubStoreSync } from "./sub";
+export type { SyncBus } from "@repo/wujie-kit";

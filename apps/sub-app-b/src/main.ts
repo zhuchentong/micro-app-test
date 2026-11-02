@@ -4,6 +4,7 @@ import { mountWujieApp } from "@repo/wujie-kit/sub";
 import { createSubStoreSync } from "@repo/store/sub";
 import App from "./App.vue";
 import router from "./router";
+import "virtual:uno.css";
 import "./style.css";
 
 mountWujieApp(() => {

@@ -1,0 +1,12 @@
+{
+  "name": "@repo/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "共享仓库级配置:typescript/ 为 tsconfig 预设,unocss/ 为 UnoCSS 共享配置(源码直出)",
+  "type": "module",
+  "devDependencies": {
+    "typescript": "catalog:",
+    "unocss": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

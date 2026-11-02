@@ -4,6 +4,7 @@ import { bus } from "wujie";
 import { appEvents } from "@repo/wujie-kit";
 import type { TabOpenPayload, TabRoutePayload, TabTitlePayload } from "@repo/wujie-kit";
 import { useThemeStore } from "@repo/store";
+import { formatClockTime } from "@repo/share";
 import AppBadge from "./components/AppBadge.vue";
 import { apps } from "./apps";
 import type { MenuEntry } from "./apps";
@@ -24,7 +25,7 @@ const broadcastText = ref("");
 let logId = 0;
 
 function addLog(source: string, text: string): void {
-  logs.value.unshift({ id: ++logId, time: new Date().toLocaleTimeString(), source, text });
+  logs.value.unshift({ id: ++logId, time: formatClockTime(new Date()), source, text });
   if (logs.value.length > 50) logs.value.pop();
 }
 
@@ -34,8 +35,9 @@ function openFromMenu(appKey: string, menu: MenuEntry): void {
 }
 
 async function closeTab(id: string): Promise<void> {
+  const title = tabs.tabs.find((tab) => tab.id === id)?.title ?? id;
   await tabs.closeTab(id);
-  addLog("host", "关闭 Tab");
+  addLog("host", `关闭 Tab · ${title}`);
 }
 
 function broadcast(): void {
@@ -176,6 +178,21 @@ onUnmounted(() => {
 
 <style scoped>
 .layout {
+  /* 主题变量:暗色仅在 [data-theme="dark"] 覆盖变量,组件规则不区分主题 */
+  --bg-page: #fff;
+  --bg-surface: #fafafa;
+  --bg-raised: #fff;
+  --bg-hover: #f3f4f6;
+  --bg-tab-inactive: #f9fafb;
+  --border: #e5e7eb;
+  --text-1: #374151;
+  --text-2: #6b7280;
+  --text-3: #9ca3af;
+  --accent: #4f46e5;
+  --accent-contrast: #fff;
+  --accent-soft: #eef2ff;
+  --accent-soft-border: #c7d2fe;
+  background: var(--bg-page);
   display: flex;
   height: 100vh;
 }
@@ -187,9 +204,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 20px;
   padding: 20px 16px;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
   overflow-y: auto;
-  background: #fafafa;
+  background: var(--bg-surface);
 }
 
 .brand {
@@ -200,16 +217,16 @@ onUnmounted(() => {
 .theme-toggle {
   align-self: flex-start;
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
-  color: #374151;
+  background: var(--bg-raised);
+  color: var(--text-1);
   font-size: 13px;
   cursor: pointer;
 }
 
 .theme-toggle:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .app-list {
@@ -233,18 +250,18 @@ onUnmounted(() => {
   border-radius: 8px;
   background: transparent;
   font-size: 14px;
-  color: #374151;
+  color: var(--text-1);
   cursor: pointer;
 }
 
 .menu-item:hover {
-  background: #f3f4f6;
+  background: var(--bg-hover);
 }
 
 .menu-item.active {
-  background: #eef2ff;
-  border-color: #c7d2fe;
-  color: #4f46e5;
+  background: var(--accent-soft);
+  border-color: var(--accent-soft-border);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -257,7 +274,7 @@ onUnmounted(() => {
 .broadcast h2,
 .logs h2 {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-3);
   margin: 0;
   font-weight: 500;
 }
@@ -271,17 +288,23 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 6px;
+  background: var(--bg-raised);
+  color: var(--text-1);
   font-size: 13px;
+}
+
+.broadcast input::placeholder {
+  color: var(--text-3);
 }
 
 .broadcast button {
   padding: 6px 12px;
   border: none;
   border-radius: 6px;
-  background: #4f46e5;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 13px;
   cursor: pointer;
 }
@@ -312,14 +335,14 @@ onUnmounted(() => {
 }
 
 .time {
-  color: #9ca3af;
+  color: var(--text-3);
   flex: none;
 }
 
 .source {
   flex: none;
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--accent);
 }
 
 .source[data-source="host"] {
@@ -332,7 +355,7 @@ onUnmounted(() => {
 
 .empty {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-3);
   margin: 0;
 }
 
@@ -351,8 +374,8 @@ onUnmounted(() => {
   gap: 4px;
   padding: 6px 12px 0;
   overflow-x: auto;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fafafa;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
 }
 
 .tab {
@@ -360,24 +383,24 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 7px 10px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  background: #f9fafb;
-  color: #374151;
+  background: var(--bg-tab-inactive);
+  color: var(--text-1);
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .tab:hover {
-  background: #eef2ff;
+  background: var(--accent-soft);
 }
 
 .tab.active {
-  background: #fff;
-  border-color: #c7d2fe;
-  color: #4f46e5;
+  background: var(--bg-raised);
+  border-color: var(--accent-soft-border);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -394,13 +417,13 @@ onUnmounted(() => {
 
 .reload-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-3);
 }
 
 .tab-close {
   padding: 0 2px;
   border-radius: 4px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 14px;
   line-height: 1;
 }
@@ -413,7 +436,7 @@ onUnmounted(() => {
 .tabs-placeholder {
   padding: 7px 4px;
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-3);
 }
 
 .pane-area {
@@ -434,7 +457,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 15px;
 }
 
@@ -447,78 +470,20 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
-/* 暗色主题:变量式覆盖 sider 与 TabsBar 配色,保持既有视觉语言 */
-.layout[data-theme="dark"] .sider {
-  background: #111827;
-  border-right-color: #1f2937;
-}
-
-.layout[data-theme="dark"] .brand {
-  color: #f9fafb;
-}
-
-.layout[data-theme="dark"] .theme-toggle {
-  background: #1f2937;
-  border-color: #374151;
-  color: #e5e7eb;
-}
-
-.layout[data-theme="dark"] .theme-toggle:hover {
-  background: #374151;
-}
-
-.layout[data-theme="dark"] .menu-item {
-  color: #d1d5db;
-}
-
-.layout[data-theme="dark"] .menu-item:hover {
-  background: #1f2937;
-}
-
-.layout[data-theme="dark"] .menu-item.active {
-  background: #312e81;
-  border-color: #4338ca;
-  color: #c7d2fe;
-}
-
-.layout[data-theme="dark"] .broadcast h2,
-.layout[data-theme="dark"] .logs h2,
-.layout[data-theme="dark"] .empty {
-  color: #6b7280;
-}
-
-.layout[data-theme="dark"] .broadcast input {
-  background: #1f2937;
-  border-color: #374151;
-  color: #e5e7eb;
-}
-
-.layout[data-theme="dark"] .time {
-  color: #6b7280;
-}
-
-.layout[data-theme="dark"] .tabs-bar {
-  background: #111827;
-  border-bottom-color: #1f2937;
-}
-
-.layout[data-theme="dark"] .tab {
-  background: #0b1220;
-  border-color: #1f2937;
-  color: #d1d5db;
-}
-
-.layout[data-theme="dark"] .tab:hover {
-  background: #1f2937;
-}
-
-.layout[data-theme="dark"] .tab.active {
-  background: #111827;
-  border-color: #4338ca;
-  color: #c7d2fe;
-}
-
-.layout[data-theme="dark"] .empty-state {
-  color: #6b7280;
+/* 暗色主题:只覆盖变量,新增组件无需再写主题分支 */
+.layout[data-theme="dark"] {
+  --bg-page: #111827;
+  --bg-surface: #0b1220;
+  --bg-raised: #1f2937;
+  --bg-hover: #1f2937;
+  --bg-tab-inactive: #0b1220;
+  --border: #1f2937;
+  --text-1: #d1d5db;
+  --text-2: #9ca3af;
+  --text-3: #6b7280;
+  --accent: #c7d2fe;
+  --accent-contrast: #0b1220;
+  --accent-soft: #312e81;
+  --accent-soft-border: #4338ca;
 }
 </style>

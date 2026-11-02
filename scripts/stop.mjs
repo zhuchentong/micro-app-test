@@ -2,27 +2,38 @@
 /**
  * 停止本仓库的全部 dev 服务(vp run stop)。
  *
- * 查找占用下列端口的进程并终止:
- * - 5175 host(来源:apps/host/vite.config.ts,strictPort:true)
- * - 7201 sub-app-a(来源:apps/sub-app-a/vite.config.ts)
- * - 7202 sub-app-b(来源:apps/sub-app-b/vite.config.ts)
+ * 自动发现 apps/<name>/vite.config.ts 中 server.port 的端口并终止监听进程,
+ * 新增子应用无需登记(端口需写为字面量,不支持变量/环境变量拼装)。
  *
  * 安全护栏:仅终止工作目录位于本仓库内的进程(Linux /proc/<pid>/cwd),
  * 端口被无关进程占用时跳过并告警。仅支持 Linux。
  */
 import { spawnSync } from "node:child_process";
-import { readlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** 端口清单:新增子应用时在此登记(与各 vite.config.ts 保持一致) */
-const ports = [
-  { port: 5175, name: "host" },
-  { port: 7201, name: "sub-app-a" },
-  { port: 7202, name: "sub-app-b" },
-];
+/** 从 apps/* 的 vite.config.ts 提取 dev 端口:返回 { name, port } 列表 */
+function discoverPorts() {
+  const entries = [];
+  for (const entry of readdirSync(appsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const configPath = join(appsDir, entry.name, "vite.config.ts");
+    if (!existsSync(configPath)) continue;
+    const source = readFileSync(configPath, "utf8");
+    const match = source.match(/server:\s*\{[^}]*\bport:\s*(\d+)/);
+    if (!match) {
+      console.warn(`[stop] 跳过 ${entry.name}:vite.config.ts 中未找到 server.port 字面量`);
+      continue;
+    }
+    entries.push({ name: entry.name, port: Number(match[1]) });
+  }
+  return entries.sort((a, b) => a.name.localeCompare(b.name));
+}
 
 /** 仓库根目录(脚本位于 <root>/scripts/) */
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+const appsDir = join(repoRoot, "apps");
 
 /** 查询端口上的监听进程 pid 集合 */
 function listenerPids(port) {
@@ -58,6 +69,12 @@ function isAlive(pid) {
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function main() {
+  const ports = discoverPorts();
+  if (ports.length === 0) {
+    console.log("[stop] apps/ 下未发现带 dev 端口的应用");
+    return;
+  }
+
   const targets = [];
   for (const { port, name } of ports) {
     for (const pid of listenerPids(port)) {

@@ -8,8 +8,8 @@ import { configureTabOps } from "./stores/tabs";
 /** createHostStoreSync 的入参类型(从契约反推,避免与 @repo/store 内部类型耦合) */
 type StoreSyncOptions = Parameters<typeof createHostStoreSync>[0];
 
-/** 已启动的保活实例 name 集合(ensure 幂等判据;刷新后重建,实例名同 id 规则稳定) */
-const startedInstances = new Set<string>();
+/** 已启动的保活实例 name → 启动令牌(ensure 幂等判据;刷新后重建,实例名同 id 规则稳定) */
+const startedInstances = new Map<string, symbol>();
 
 /**
  * 初始化 wujie 主应用:host→子应用状态同步器 + Tab 实例副作用。
@@ -30,34 +30,49 @@ export function initWujie(pinia: Pinia, bus: unknown): void {
     return { user: { ...user.user }, theme: theme.theme };
   };
 
-  configureTabOps({
-    /** cold → 实例化:一 Tab 一实例(alive 保活 + sync:false,路由由主应用自管) */
-    ensureInstance(tab) {
-      const name = tabInstanceName(tab.app, tab.id);
-      if (startedInstances.has(name)) return; // 幂等:重复 activate/双击不重复 start
-      startedInstances.add(name);
-      startTabApp({
-        startApp,
-        apps,
-        baseProps,
-        tab: {
-          id: tab.id,
-          app: tab.app,
-          page: tab.page,
-          query: tab.query,
-          el: `#tab-container-${tab.n}`,
-        },
-        alive: true,
-        onError: (_tab, url, error) =>
-          console.error(`[wujie] Tab(${tab.id}) 加载失败: ${url}`, error),
-      });
+  configureTabOps(
+    {
+      /** cold → 实例化:一 Tab 一实例(alive 保活 + sync:false,路由由主应用自管) */
+      ensureInstance(tab, onFailed) {
+        const name = tabInstanceName(tab.app, tab.id);
+        if (startedInstances.has(name)) return; // 幂等:重复 activate/双击不重复 start
+        // 启动令牌:迟到的旧实例错误不得误删新实例的判据
+        const token = Symbol(name);
+        startedInstances.set(name, token);
+        startTabApp({
+          startApp,
+          apps,
+          baseProps,
+          tab: {
+            id: tab.id,
+            app: tab.app,
+            page: tab.page,
+            query: tab.query,
+            el: `#tab-container-${tab.n}`,
+          },
+          alive: true,
+          onError: (failedTab, url, error) => {
+            // 仅释放本次启动的判据:迟到的旧实例错误不得误删新实例
+            if (startedInstances.get(name) === token) startedInstances.delete(name);
+            onFailed?.(error);
+            console.error(`[wujie] Tab(${failedTab.id}) 加载失败: ${url}`, error);
+          },
+        });
+      },
+      /** 销毁保活实例(LRU 降级 / 关闭 Tab);先同步失效判据,避免销毁窗口内重开被挡住 */
+      async destroyInstance(tab) {
+        const name = tabInstanceName(tab.app, tab.id);
+        if (!startedInstances.has(name)) return;
+        // wujie 的 sandbox.destroy() 在首个 await 之前就同步 deleteWujieById,
+        // 因此这里同步放开判据不会与在途 destroy 抢同一实例;重开走新记录 + 新容器号。
+        startedInstances.delete(name);
+        try {
+          await destroyApp(name);
+        } catch (error) {
+          console.error(`[wujie] Tab(${tab.id}) 销毁失败:`, error);
+        }
+      },
     },
-    /** 销毁保活实例(LRU 降级 / 关闭 Tab);成功后从判据集合移除,允许后续重建 */
-    async destroyInstance(tab) {
-      const name = tabInstanceName(tab.app, tab.id);
-      if (!startedInstances.has(name)) return;
-      await destroyApp(name);
-      startedInstances.delete(name);
-    },
-  });
+    apps,
+  );
 }

@@ -1,3 +1,10 @@
+/** 主/子应用 bus 最小结构接口(wujie 导出的 bus 结构兼容,必要时由调用方断言) */
+export interface SyncBus {
+  $emit(event: string, data?: unknown): void;
+  $on<T = unknown>(event: string, callback: (data?: T) => void): void;
+  $off(event: string, callback?: (data?: unknown) => void): void;
+}
+
 /** 主应用注册表条目 */
 export interface MicroApp {
   key: string;

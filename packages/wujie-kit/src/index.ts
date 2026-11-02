@@ -12,4 +12,4 @@ export type {
   TabRoutePayload,
   TabTitlePayload,
 } from "./events";
-export type { HostProps, MicroApp, SubAppConfig, TabInfo } from "./types";
+export type { HostProps, MicroApp, SubAppConfig, SyncBus, TabInfo } from "./types";

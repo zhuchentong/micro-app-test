@@ -1,16 +1,9 @@
 import type { Pinia } from "pinia";
 import { appEvents } from "@repo/wujie-kit";
-import type { HostStatePayload } from "@repo/wujie-kit";
+import type { HostStatePayload, SyncBus } from "@repo/wujie-kit";
 import { useHostProps } from "@repo/wujie-kit/sub";
 import { useThemeStore } from "./stores/theme";
 import { useUserStore } from "./stores/user";
-
-/** sub 侧最小 bus 结构接口(wujie 导出的 bus 结构兼容,必要时由调用方断言) */
-export interface SyncBus {
-  $on<T = unknown>(event: string, callback: (data?: T) => void): void;
-  $emit(event: string, data?: unknown): void;
-  $off(event: string, callback?: (data?: unknown) => void): void;
-}
 
 /** sub 侧同步器句柄 */
 export interface SubStoreSync {

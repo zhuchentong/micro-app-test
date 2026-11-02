@@ -140,13 +140,11 @@ export function parseTabUrl(url: string, apps: MicroApp[]): ParsedTabUrl {
   const segments = parsed.pathname.replace(/^\/+/, "").split("/");
   const [appKey, ...rest] = segments;
   if (!appKey || !apps.some((app) => app.key === appKey)) return {};
+  const query = parseQueryParams(parsed.search);
   return {
     app: appKey,
     page: rest.length > 0 ? `/${rest.join("/")}` : "/",
-    query:
-      Object.keys(parseQueryParams(parsed.search)).length > 0
-        ? parseQueryParams(parsed.search)
-        : undefined,
+    query: Object.keys(query).length > 0 ? query : undefined,
   };
 }
 
@@ -211,19 +209,31 @@ export function startTabApp(options: TabAppOptions): void {
   const resolvedBase = typeof baseProps === "function" ? baseProps() : baseProps;
   const url = buildTabUrl(app.domain, tab.page, tab.query);
 
-  void startApp({
-    // wujie 实例 name 全局唯一;tabId 含非安全字符,经确定性 hash 生成合法 name
-    name: tabInstanceName(app.key, tab.id),
-    url,
-    el: tab.el,
-    sync: false,
-    alive,
-    props: { ...resolvedBase, tab: { id: tab.id, app: tab.app, page: tab.page } },
-    loadError: (loadUrl, error) => {
-      if (onError) onError(tab, loadUrl, error);
-      else console.error(`[wujie] ${app.name}(${tab.id}) 加载失败: ${loadUrl}`, error);
-    },
-  });
+  const reportError = (failedUrl: string, error: unknown): void => {
+    if (onError) onError(tab, failedUrl, error);
+    else console.error(`[wujie] ${app.name}(${tab.id}) 启动/加载失败: ${failedUrl}`, error);
+  };
+
+  try {
+    void Promise.resolve(
+      startApp({
+        // wujie 实例 name 全局唯一;tabId 含非安全字符,经确定性 hash 生成合法 name
+        name: tabInstanceName(app.key, tab.id),
+        url,
+        el: tab.el,
+        sync: false,
+        alive,
+        props: { ...resolvedBase, tab: { id: tab.id, app: tab.app, page: tab.page } },
+        loadError: (loadUrl, error) => reportError(loadUrl, error),
+      }),
+    ).catch((error) => {
+      // startApp 的异步 rejection 也必须进 onError:否则调用方的"已启动"判据永远不会释放
+      reportError(url, error);
+    });
+  } catch (error) {
+    // startApp 同步抛错(如容器不存在)
+    reportError(url, error);
+  }
 
   onStarted?.(tab, url);
 }

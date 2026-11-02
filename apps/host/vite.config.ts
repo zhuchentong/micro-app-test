@@ -1,11 +1,16 @@
 import { musea } from "@vizejs/vite-plugin-musea";
+import UnoCSS from "unocss/vite";
+import { createUnoConfig } from "@repo/config/unocss";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
 
 export default defineConfig(
   {
     // 5173 常被其他本地项目占用,固定 5175 保证入口 URL 稳定
     server: { port: 5175, strictPort: true },
-    plugins: [musea({ include: ["**/*.art.vue"], basePath: "/__musea__" })],
+    plugins: [
+      musea({ include: ["**/*.art.vue"], basePath: "/__musea__" }),
+      UnoCSS(createUnoConfig()),
+    ],
   },
   { tasks: false },
 );

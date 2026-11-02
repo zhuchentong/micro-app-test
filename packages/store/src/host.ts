@@ -1,16 +1,12 @@
 import { watch } from "vue";
 import type { Pinia } from "pinia";
 import { appEvents } from "@repo/wujie-kit";
-import type { HostStatePayload } from "@repo/wujie-kit";
+import type { HostStatePayload, SyncBus } from "@repo/wujie-kit";
 import { useThemeStore } from "./stores/theme";
 import { useUserStore } from "./stores/user";
 
-/** host 侧最小 bus 结构接口(wujie 导出的 bus 结构兼容,必要时由调用方断言) */
-export interface SyncBus {
-  $emit(event: string, data?: unknown): void;
-  $on<T = unknown>(event: string, callback: (data?: T) => void): void;
-  $off(event: string, callback?: (data?: unknown) => void): void;
-}
+/** host 侧 bus 结构契约(单一来源在 @repo/wujie-kit,此处 re-export 保持包公共 API 不变) */
+export type { SyncBus };
 
 /** host 侧同步器句柄:手动 + 自动广播状态快照 */
 export interface HostStoreSync {

@@ -10,6 +10,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@repo/share": "workspace:*",
     "@repo/store": "workspace:*",
     "@repo/wujie-kit": "workspace:*",
     "pinia": "catalog:",
@@ -17,10 +18,11 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@repo/typescript-config": "workspace:*",
+    "@repo/config": "workspace:*",
     "@vizejs/vite-plugin": "catalog:",
     "@vizejs/vite-plugin-musea": "catalog:",
     "typescript": "catalog:",
+    "unocss": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

@@ -31,8 +31,8 @@ interface TabsSnapshot {
 
 /** 宿主环境副作用(由 wujie.ts 注入;store 保持纯状态机) */
 export interface TabOps {
-  /** cold → 实例化(幂等) */
-  ensureInstance(tab: TabRecord): void;
+  /** cold → 实例化(幂等);启动失败时经 onFailed 回调(含异步失败) */
+  ensureInstance(tab: TabRecord, onFailed?: (error: unknown) => void): void;
   /** 销毁保活实例(LRU 降级 / 关闭 Tab) */
   destroyInstance(tab: TabRecord): Promise<void>;
 }
@@ -40,14 +40,59 @@ export interface TabOps {
 let ops: TabOps | null = null;
 let registry: HostApp[] = [];
 
-/** @internal 由 wujie.ts 在 initWujie 时注入副作用实现 */
-export function configureTabOps(next: TabOps): void {
+/** @internal 由 wujie.ts 在 initWujie 时注入副作用实现(注册表同步保存,校验不依赖 init 时序) */
+export function configureTabOps(next: TabOps, apps?: HostApp[]): void {
   ops = next;
+  if (apps) registry = apps;
 }
 
 function assertOps(): TabOps {
   if (!ops) throw new Error("[tabs] 尚未 configureTabOps,请先调用 initWujie");
   return ops;
+}
+
+/** tabs store 的状态形状(与 TabsSnapshot 持久化结构一致) */
+type TabsState = {
+  tabs: TabRecord[];
+  activeId: string | null;
+  seq: number;
+};
+
+/** cold Tab 实例化去重锁:同 id 的并发 activate 共享同一在途 promise(nextTick 窗口交错也不重复 start) */
+const pendingEnsure = new Map<string, Promise<boolean>>();
+
+/**
+ * cold → 实例化。只等到"启动指令已发出",不等待子应用加载完成(不阻塞切 Tab);
+ * 同步启动失败时返回 false 并由 onFailed 回滚为 cold,允许用户再次点击重试。
+ */
+function ensureForActivate(store: TabsState, tab: TabRecord): Promise<boolean> {
+  const existing = pendingEnsure.get(tab.id);
+  if (existing) return existing;
+
+  let syncFailed = false;
+  const rollback = (error: unknown): void => {
+    syncFailed = true;
+    console.error(`[tabs] 实例创建失败(${tab.id}):`, error);
+    // 记录已被关闭:无需回滚(实例侧已放开判据,下次重开会重建)
+    if (!store.tabs.includes(tab)) return;
+    tab.state = "cold"; // 回到可重试态(激活 Tab 会显示 ↻)
+  };
+
+  const task = (async () => {
+    // 等待容器 div 渲染(v-for 随 tabs 更新),再交给 wujie 挂载
+    await nextTick();
+    // nextTick 窗口内 Tab 可能已被关闭(记录移出列表),放弃创建避免实例悬挂
+    if (!store.tabs.includes(tab)) return !syncFailed;
+    try {
+      assertOps().ensureInstance(tab, rollback);
+    } catch (error) {
+      rollback(error); // 同步抛错(未注册 app / 容器缺失)
+    }
+    return !syncFailed;
+  })().finally(() => pendingEnsure.delete(tab.id));
+
+  pendingEnsure.set(tab.id, task);
+  return task;
 }
 
 function loadSnapshot(): TabsSnapshot | null {
@@ -99,7 +144,6 @@ export const useTabsStore = defineStore("tabs", {
       activeId: null,
       seq: 0,
     }) as TabsState,
-
   getters: {
     activeTab(state): TabRecord | undefined {
       return state.tabs.find((tab) => tab.id === state.activeId);
@@ -188,12 +232,19 @@ export const useTabsStore = defineStore("tabs", {
         return;
       }
 
+      // 同 id 有在途实例化:先等它落定,避免第二个调用方抢先把状态置 active
+      const inflight = pendingEnsure.get(id);
+      if (inflight) await inflight;
+
       let created = false;
       if (tab.state === "cold") {
-        // 等待容器 div 渲染(v-for 随 state 更新),再交给 wujie 挂载
-        await nextTick();
-        assertOps().ensureInstance(tab);
+        // background 占位:并发 activate 同 id 走 pendingEnsure 合并,实例只建一次
         tab.state = "background";
+        const started = await ensureForActivate(this, tab);
+        // 等待期间记录被关闭/移出列表:放弃激活,避免把状态写到已移除的记录上
+        if (!this.tabs.includes(tab)) return;
+        // 同步启动失败已回滚 cold:不进入激活,保留 ↻ 供重试
+        if (!started) return;
         created = true;
       }
 
@@ -201,6 +252,7 @@ export const useTabsStore = defineStore("tabs", {
       if (prev && prev.id !== id && prev.state === "active") prev.state = "background";
 
       this.activeId = id;
+      tab.state = "active";
       tab.lastActivatedAt = Date.now();
 
       window.history.replaceState(null, "", mainPath(tab));
@@ -209,18 +261,19 @@ export const useTabsStore = defineStore("tabs", {
       if (created) this.trim();
     },
 
-    /** 关闭 Tab:销毁实例并移除记录;激活 Tab 被关则激活相邻(左优先) */
+    /** 关闭 Tab:先同步移除记录再异步销毁;激活 Tab 被关则激活相邻(左优先) */
     async closeTab(id: string): Promise<void> {
       const index = this.tabs.findIndex((item) => item.id === id);
       if (index < 0) return;
+      const wasActive = this.activeId === id;
       const [tab] = this.tabs.splice(index, 1);
+      // 记录已移除,销毁期间的重开会走新记录 + 新容器,不与在途 destroy 互踩
       if (tab.state !== "cold") {
-        // 先置 cold 再销毁:销毁中若被重开,activate 走 ensure 的幂等路径
-        tab.state = "cold";
         await destroyQuietly(tab);
       }
 
-      if (this.activeId === id) {
+      // 销毁期间同页被重开(同 id 的新记录):激活权已交给它,不再改成邻居
+      if (wasActive && !this.tabs.some((item) => item.id === id)) {
         const neighbor = this.tabs[index - 1] ?? this.tabs[index];
         if (neighbor) {
           await this.activate(neighbor.id);
@@ -277,12 +330,6 @@ export const useTabsStore = defineStore("tabs", {
     },
   },
 });
-
-type TabsState = {
-  tabs: TabRecord[];
-  activeId: string | null;
-  seq: number;
-};
 
 async function destroyQuietly(tab: TabRecord): Promise<void> {
   try {

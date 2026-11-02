@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Counter from "../components/Counter.vue";
+import StatusDot from "@repo/share/components/StatusDot.vue";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
 import { useThemeStore, useUserStore } from "@repo/store";
 
@@ -31,6 +32,7 @@ const injectedTheme = computed(() => props?.theme ?? "-");
 
     <section class="card">
       <h2>实时状态(store 同步)</h2>
+      <p><StatusDot label="共享组件 @repo/share 加载正常" status="ok" /></p>
       <dl>
         <dt>用户</dt>
         <dd>{{ userStore.user.name || "—" }}</dd>

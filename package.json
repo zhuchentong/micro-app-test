@@ -5,14 +5,13 @@
   "type": "module",
   "scripts": {
     "ready": "vp run check && vp run -r test && vp run build",
-    "dev": "vp run -r dev",
-    "dev:host": "vp run host#dev",
-    "dev:sub-a": "vp run sub-app-a#dev",
-    "dev:sub-b": "vp run sub-app-b#dev",
-    "build": "vp -C apps/host build && vp -C apps/sub-app-a build && vp -C apps/sub-app-b build && vp -C packages/utils pack",
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@clack/prompts": "catalog:",
+    "@repo/config": "workspace:*",
     "@vizejs/vite-plugin": "catalog:",
     "oxlint-plugin-vize": "catalog:",
     "vite-plus": "catalog:",

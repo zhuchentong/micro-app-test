@@ -1,4 +1,4 @@
 {
-  "extends": "@repo/typescript-config/vue-app.json",
-  "include": ["src"]
+  "extends": "@repo/config/typescript/vue-app.json",
+  "include": ["src", "uno.config.ts", "vite.config.ts"]
 }

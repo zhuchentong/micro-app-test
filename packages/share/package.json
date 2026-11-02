@@ -1,0 +1,24 @@
+{
+  "name": "@repo/share",
+  "version": "0.0.0",
+  "private": true,
+  "description": "主应用/子应用共享的公共组件与工具函数(内部包,源码直出,由消费方各自编译)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "vue": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/config": "workspace:*",
+    "@repo/share": "workspace:*",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

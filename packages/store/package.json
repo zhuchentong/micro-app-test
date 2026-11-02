@@ -18,7 +18,7 @@
     "vue": "catalog:"
   },
   "devDependencies": {
-    "@repo/typescript-config": "workspace:*",
+    "@repo/config": "workspace:*",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
   }

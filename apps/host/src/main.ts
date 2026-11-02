@@ -4,6 +4,7 @@ import { bus } from "wujie";
 import App from "./App.vue";
 import { initWujie } from "./wujie";
 import { useUserStore } from "@repo/store";
+import "virtual:uno.css";
 import "./style.css";
 
 const pinia = createPinia();
