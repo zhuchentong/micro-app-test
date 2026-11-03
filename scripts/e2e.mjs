@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * agent-browser 驱动的浏览器 E2E smoke(10 条链路)。
+ * agent-browser 驱动的浏览器 E2E smoke(11 条链路)。
  *
  * 用法: node scripts/e2e.mjs   (或仓库根 `vp run e2e`)
  * 前提: 全局安装 agent-browser(>=0.39);缺失时 fail-fast 并给出安装指引。
@@ -12,7 +12,7 @@
  *      与手动 dev 并行运行时互杀属预期行为。
  *   ③ 基线重置: 清空 localStorage/sessionStorage 后 reload,
  *      保证 wujie-mvp:theme-custom:v1 / wujie-mvp:tabs:v1 不跨运行残留
- *   ④ 10 条链路: host 侧控件原生 click(无 iframe 覆盖);
+ *   ④ 11 条链路: host 侧控件原生 click(无 iframe 覆盖);
  *      子应用侧一律 eval JS click(wujie iframe 覆盖子应用区域,原生点击被
  *      actionability 检查拒绝,实测必须);等待一律 wait --text/--fn,不用固定 sleep;
  *      断言只依赖 eval 返回的 JSON 值(不解析 CLI 文本格式,降低版本漂移风险),
@@ -28,7 +28,8 @@
  *   8 用例 6(广播)        → 链路 7
  *   8 用例 7(刷新恢复)    → 链路 9
  *   8 用例 8(关 Tab)      → 链路 10
- *   (链路 6 保活为实测补充,覆盖 wujie alive 核心卖点)
+ *   (链路 6 保活为实测补充,覆盖 wujie alive 核心卖点;
+ *    链路 11 布局切换为 host layouts 动态布局实测补充)
  */
 import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -459,12 +460,12 @@ async function flow3RenderAndSync() {
 async function flow4DarkTheme() {
   console.log("[链路 4] 暗色切换(CSS 变量 + 子应用同步)");
   const before = await cssVar("--app-bg-page");
-  expect("切换前为亮色 #ffffff", before, "#ffffff");
+  expect("切换前为亮色 #edf4f9", before, "#edf4f9");
   await evalJson(
     "(() => { document.querySelector('.theme-toggle').click(); return { clicked: true }; })()",
   );
   await waitFn(
-    "getComputedStyle(document.documentElement).getPropertyValue('--app-bg-page').trim() !== '#ffffff'",
+    "getComputedStyle(document.documentElement).getPropertyValue('--app-bg-page').trim() !== '#edf4f9'",
     "暗色变量生效",
   );
   const state = await evalJson(
@@ -473,7 +474,7 @@ async function flow4DarkTheme() {
       " const sr = pane && pane.querySelector('wujie-app')?.shadowRoot;" +
       " return !!sr && sr.textContent.includes('主题dark'); })() }))()",
   );
-  expect("切换后 --app-bg-page = #0b1220", state.bg, "#0b1220");
+  expect("切换后 --app-bg-page = #0b1e2c", state.bg, "#0b1e2c");
   expect("子应用 store 同步 dark", state.subDark, true);
 }
 
@@ -653,7 +654,68 @@ async function flow10CloseTab() {
 }
 
 /**
- * 主流程:前置检查 → 启动 dev → 基线重置 → 顺序执行 10 条链路 → 汇总
+ * 链路 11:layouts 动态布局(workspace ↔ blank)
+ * chrome 层切换(sider 卸载/浮动按钮挂载),wujie 容器层常驻:
+ * 保活实例穿越布局切换与 blank 下刷新不重载,布局偏好 localStorage 持久化跨刷新恢复
+ *
+ * @returns {Promise<void>} 断言结果写入报告
+ */
+async function flow11LayoutSwitch() {
+  console.log("[链路 11] 布局切换(workspace ↔ blank)+ 保活 + 持久化");
+  // flow10 刚把激活权交给 cold 的产品 Tab:实例异步重建中,先等渲染就绪再切布局
+  await waitAppText("产品列表");
+  const toBlank = await evalJson(
+    "(() => { const btn = document.querySelector('.focus-mode');" +
+      " if (!btn) return { clicked: false }; btn.click(); return { clicked: true }; })()",
+  );
+  expect("专注模式按钮可点击", toBlank.clicked, true);
+  await waitFn(
+    "!document.querySelector('.sider') && !!document.querySelector('.fab')" +
+      " && localStorage.getItem('wujie-mvp:layout:v1') === 'blank'",
+    "切换到 blank(sider 卸载、浮动按钮挂载、偏好落盘)",
+  );
+  const blankState = await evalJson(
+    "(() => { const bar = document.querySelector('.tabs-bar');" +
+      " const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
+      " const sr = pane && pane.querySelector('wujie-app')?.shadowRoot;" +
+      " return { tabsBarHidden: !!bar && bar.style.display === 'none'," +
+      " tabs: document.querySelectorAll('.tab').length," +
+      " alive: !!sr && sr.textContent.includes('产品列表') }; })()",
+  );
+  expect("tabs-bar 隐藏(v-show)", blankState.tabsBarHidden, true);
+  expect("Tab 列表穿越布局切换保留", blankState.tabs, 3);
+  expect("保活实例仍在渲染(产品列表)", blankState.alive, true);
+
+  // blank 下刷新:布局偏好持久化恢复,Tab 会话照常恢复 + 激活实例重建
+  await openWithRetry(`${HOST_URL}/sub-a/products`);
+  await waitLoad("load");
+  await waitFn(
+    "!!document.querySelector('.fab') && !document.querySelector('.sider')" +
+      " && localStorage.getItem('wujie-mvp:layout:v1') === 'blank'",
+    "刷新后保持 blank 布局",
+  );
+  await waitFn(
+    "(() => { const t = document.querySelector('.tab.active');" +
+      " return document.querySelectorAll('.tab').length === 3 && !!t && !t.classList.contains('cold'); })()",
+    "blank 下刷新 Tab 恢复且激活实例重建",
+  );
+  await waitAppText("产品列表");
+
+  const backToWorkspace = await evalJson(
+    "(() => { const fab = document.querySelector('.fab');" +
+      " if (!fab) return { clicked: false }; fab.click(); return { clicked: true }; })()",
+  );
+  expect("返回工作台按钮可点击", backToWorkspace.clicked, true);
+  await waitFn(
+    "!!document.querySelector('.sider')" +
+      " && (() => { const bar = document.querySelector('.tabs-bar'); return !!bar && bar.style.display !== 'none'; })()" +
+      " && localStorage.getItem('wujie-mvp:layout:v1') === 'workspace'",
+    "切回 workspace(sider 挂载、tabs-bar 恢复)",
+  );
+}
+
+/**
+ * 主流程:前置检查 → 启动 dev → 基线重置 → 顺序执行 11 条链路 → 汇总
  *
  * @returns {Promise<void>} 进程退出码由断言结果决定(0/1)
  */
@@ -674,13 +736,14 @@ async function main() {
   await flow8TabOpen();
   await flow9RefreshRestore();
   await flow10CloseTab();
+  await flow11LayoutSwitch();
 
   if (failures > 0) {
     console.error(`\n[e2e] 结果: ${failures} 个断言失败`);
     process.exitCode = 1;
     return;
   }
-  console.log("\n[e2e] 结果: 10 条链路全部通过");
+  console.log("\n[e2e] 结果: 11 条链路全部通过");
 }
 
 try {
