@@ -1,10 +1,13 @@
-* {
-  box-sizing: border-box;
-}
+/* Tailwind v4 入口:preflight 基线 + tu-design(shadcn) tokens 桥接 --app-*(见 @repo/themes/tokens.css)。
+ * box-sizing/margin 交由 preflight,此处仅保留字体与主题色绑定。 */
+@import "tailwindcss";
+@import "@repo/themes/tokens.css";
+/* Tailwind v4 不跟随 pnpm symlink:dist 真实路径由 vite.config 生成(gitignored) */
+@import "./ui.source.css";
 
 body {
-  margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  color: #111827;
-  background: #fff;
+  /* 主题变量由 main.ts applyTheme 写入 :root;dark 下滚动溢出区域不再露白 */
+  color: var(--app-text-1);
+  background: var(--app-bg-page);
 }

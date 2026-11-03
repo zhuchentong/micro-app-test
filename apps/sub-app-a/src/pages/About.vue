@@ -52,10 +52,10 @@ onMounted(() => {
 }
 
 .card {
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 16px;
-  background: var(--sub-surface);
+  background: var(--app-bg-surface);
   transition:
     background-color 0.2s,
     border-color 0.2s;
@@ -75,11 +75,11 @@ onMounted(() => {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
   font-size: 14px;
-  background: var(--sub-surface);
-  color: var(--sub-text);
+  background: var(--app-bg-surface);
+  color: var(--app-text-1);
 }
 
 .row button {
@@ -94,7 +94,7 @@ onMounted(() => {
 
 .hint {
   font-size: 13px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   margin: 8px 0 0;
 }
 
@@ -105,6 +105,6 @@ onMounted(() => {
 
 .meta {
   font-size: 12px;
-  color: var(--sub-faint);
+  color: var(--app-text-3);
 }
 </style>

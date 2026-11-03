@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import Counter from "../components/Counter.vue";
-import StatusDot from "@repo/share/components/StatusDot.vue";
+import StatusDot from "@repo/share/ui/StatusDot.vue";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
 import { useThemeStore, useUserStore } from "@repo/store";
 
@@ -60,10 +60,10 @@ const injectedTheme = computed(() => props?.theme ?? "-");
 }
 
 .card {
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 16px;
-  background: var(--sub-surface);
+  background: var(--app-bg-surface);
   transition:
     background-color 0.2s,
     border-color 0.2s;
@@ -83,7 +83,7 @@ dl {
 }
 
 dt {
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 
 dd {
@@ -92,7 +92,7 @@ dd {
 
 .hint {
   font-size: 13px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   margin: 0 0 8px;
 }
 </style>

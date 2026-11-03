@@ -2,12 +2,10 @@
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
-import { useThemeStore } from "@repo/store";
 import { subBus } from "../bus";
 import { findProduct } from "../mock/products";
 
 const route = useRoute();
-const themeStore = useThemeStore();
 const hostProps = useHostProps();
 
 const product = computed(() => findProduct(String(route.params.id)));
@@ -33,7 +31,7 @@ watch(
 </script>
 
 <template>
-  <main class="page" :data-theme="themeStore.theme">
+  <main class="page">
     <template v-if="product">
       <h2>{{ product.name }} #{{ product.id }}</h2>
       <dl>
@@ -76,7 +74,7 @@ dl {
 }
 
 dt {
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 
 dd {
@@ -84,10 +82,10 @@ dd {
 }
 
 .card {
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 16px;
-  background: var(--sub-surface);
+  background: var(--app-bg-surface);
 }
 
 .card h3 {
@@ -97,7 +95,7 @@ dd {
 
 .hint {
   font-size: 13px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   margin: 0 0 12px;
 }
 
@@ -121,6 +119,6 @@ dd {
 
 .missing {
   font-size: 14px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 </style>

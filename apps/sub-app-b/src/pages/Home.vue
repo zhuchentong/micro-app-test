@@ -58,10 +58,10 @@ const injectedTheme = computed(() => props?.theme ?? "-");
 }
 
 .card {
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
   padding: 16px;
-  background: var(--sub-surface);
+  background: var(--app-bg-surface);
   transition:
     background-color 0.2s,
     border-color 0.2s;
@@ -81,7 +81,7 @@ dl {
 }
 
 dt {
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 
 dd {
@@ -90,7 +90,7 @@ dd {
 
 .hint {
   font-size: 13px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   margin: 0 0 8px;
 }
 </style>

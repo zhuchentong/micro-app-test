@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { watch } from "vue";
 import { useRoute } from "vue-router";
-import { useThemeStore, useUserStore } from "@repo/store";
+import { useUserStore } from "@repo/store";
 import { appConfig } from "./app.config";
 import { subBus } from "./bus";
 
 const route = useRoute();
 
-const themeStore = useThemeStore();
 const userStore = useUserStore();
 
 /** Tab 内导航同步(替代 wujie sync):路由变化上报主应用,标题走 tab 契约 */
@@ -23,7 +22,16 @@ watch(
 </script>
 
 <template>
-  <div class="app" :data-theme="themeStore.theme">
+  <div class="app">
+    <!-- TODO(tu-design 冒烟):验证通过后删除 -->
+    <div
+      class="fixed bottom-4 left-4 z-50 flex w-64 flex-col gap-3 rounded-lg border bg-card p-4 shadow-md"
+    >
+      <p class="text-sm font-medium">tu-design 冒烟(sub-app-b)</p>
+      <Button>确认</Button>
+      <Input placeholder="focus ring 应跟随主题" />
+      <p class="text-xs text-muted-foreground">明暗切换经 host :root 穿透</p>
+    </div>
     <header class="header" :style="{ borderColor: appConfig.accent }">
       <span class="logo" :style="{ background: appConfig.accent }" />
       <strong>{{ appConfig.name }}</strong>
@@ -40,32 +48,11 @@ watch(
 
 <style scoped>
 .app {
-  /* 主题变量:默认亮色,[data-theme] 切换;页面/卡片/控件经 var() 继承,整页随主题变化 */
-  --sub-header-bg: #ffffff;
-  --sub-bg: #ffffff;
-  --sub-surface: #ffffff;
-  --sub-text: #111827;
-  --sub-muted: #6b7280;
-  --sub-faint: #9ca3af;
-  --sub-border: #e5e7eb;
-  --sub-hover: #f3f4f6;
-
+  /* 主题变量由 host 写入 :root(独立运行时 main.ts 自行应用),此处只消费 */
   min-height: 100vh;
-  background: var(--sub-bg);
-  color: var(--sub-text);
+  background: var(--app-bg-page);
+  color: var(--app-text-1);
   transition: background-color 0.2s, color 0.2s;
-}
-
-/* 暗色覆盖:与 host 暗色同一色系 */
-.app[data-theme="dark"] {
-  --sub-header-bg: #111827;
-  --sub-bg: #0b1220;
-  --sub-surface: #1f2937;
-  --sub-text: #f9fafb;
-  --sub-muted: #9ca3af;
-  --sub-faint: #6b7280;
-  --sub-border: #374151;
-  --sub-hover: #374151;
 }
 
 .header {
@@ -74,7 +61,7 @@ watch(
   gap: 12px;
   padding: 12px 20px;
   border-bottom: 2px solid;
-  background: var(--sub-header-bg);
+  background: var(--app-header-bg);
   transition: background-color 0.2s;
 }
 
@@ -91,18 +78,18 @@ nav {
 }
 
 nav a {
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   text-decoration: none;
   font-size: 14px;
 }
 
 nav a.router-link-active {
-  color: var(--sub-text);
+  color: var(--app-text-1);
   font-weight: 600;
 }
 
 .user {
   font-size: 14px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 </style>

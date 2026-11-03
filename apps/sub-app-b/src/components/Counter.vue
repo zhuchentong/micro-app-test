@@ -29,10 +29,10 @@ const count = ref(props.initial ?? 0);
 
 button {
   padding: 6px 14px;
-  border: 1px solid var(--sub-border, #d1d5db);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: var(--sub-surface, #fff);
-  color: var(--sub-text, #111827);
+  background: var(--app-bg-surface);
+  color: var(--app-text-1);
   font-size: 14px;
   cursor: pointer;
   transition:
@@ -41,6 +41,6 @@ button {
 }
 
 button:hover {
-  background: var(--sub-hover, #f3f4f6);
+  background: var(--app-bg-hover);
 }
 </style>

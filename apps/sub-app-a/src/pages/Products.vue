@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
-import { useThemeStore } from "@repo/store";
 import { subBus } from "../bus";
 import { products } from "../mock/products";
 
 const router = useRouter();
-const themeStore = useThemeStore();
 const hostProps = useHostProps();
 
 /**
@@ -24,7 +22,7 @@ function openProduct(id: string): void {
 </script>
 
 <template>
-  <main class="page" :data-theme="themeStore.theme">
+  <main class="page">
     <h2>产品列表</h2>
     <p class="hint">点击产品:在主应用 Tabs 中新开 Tab(同产品复用已有 Tab)。不同产品并存不冲突。</p>
     <ul class="product-list">
@@ -52,7 +50,7 @@ function openProduct(id: string): void {
 
 .hint {
   font-size: 13px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
   margin: 0 0 16px;
 }
 
@@ -69,9 +67,9 @@ function openProduct(id: string): void {
   width: 100%;
   text-align: left;
   padding: 12px 14px;
-  border: 1px solid var(--sub-border);
+  border: 1px solid var(--app-border);
   border-radius: 10px;
-  background: var(--sub-surface);
+  background: var(--app-bg-surface);
   cursor: pointer;
   display: grid;
   grid-template-columns: 1fr auto;
@@ -86,7 +84,7 @@ function openProduct(id: string): void {
 .product-item .name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--sub-text);
+  color: var(--app-text-1);
 }
 
 .product-item .meta {
@@ -98,6 +96,6 @@ function openProduct(id: string): void {
 .product-item .desc {
   grid-column: 1 / -1;
   font-size: 12px;
-  color: var(--sub-muted);
+  color: var(--app-text-2);
 }
 </style>

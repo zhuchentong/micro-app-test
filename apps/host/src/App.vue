@@ -87,7 +87,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="layout" :data-theme="themeStore.theme">
+  <div class="layout">
     <aside class="sider">
       <h1 class="brand">无界 MVP · 主应用</h1>
 
@@ -178,21 +178,8 @@ onUnmounted(() => {
 
 <style scoped>
 .layout {
-  /* 主题变量:暗色仅在 [data-theme="dark"] 覆盖变量,组件规则不区分主题 */
-  --bg-page: #fff;
-  --bg-surface: #fafafa;
-  --bg-raised: #fff;
-  --bg-hover: #f3f4f6;
-  --bg-tab-inactive: #f9fafb;
-  --border: #e5e7eb;
-  --text-1: #374151;
-  --text-2: #6b7280;
-  --text-3: #9ca3af;
-  --accent: #4f46e5;
-  --accent-contrast: #fff;
-  --accent-soft: #eef2ff;
-  --accent-soft-border: #c7d2fe;
-  background: var(--bg-page);
+  /* 主题变量由 @repo/themes 经 host main.ts 写入 :root,此处只消费(var 经继承穿透到子应用 DOM) */
+  background: var(--app-bg-page);
   display: flex;
   height: 100vh;
 }
@@ -204,9 +191,9 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 20px;
   padding: 20px 16px;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--app-border);
   overflow-y: auto;
-  background: var(--bg-surface);
+  background: var(--app-bg-surface);
 }
 
 .brand {
@@ -217,16 +204,16 @@ onUnmounted(() => {
 .theme-toggle {
   align-self: flex-start;
   padding: 6px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: var(--bg-raised);
-  color: var(--text-1);
+  background: var(--app-bg-raised);
+  color: var(--app-text-1);
   font-size: 13px;
   cursor: pointer;
 }
 
 .theme-toggle:hover {
-  background: var(--bg-hover);
+  background: var(--app-bg-hover);
 }
 
 .app-list {
@@ -250,18 +237,18 @@ onUnmounted(() => {
   border-radius: 8px;
   background: transparent;
   font-size: 14px;
-  color: var(--text-1);
+  color: var(--app-text-1);
   cursor: pointer;
 }
 
 .menu-item:hover {
-  background: var(--bg-hover);
+  background: var(--app-bg-hover);
 }
 
 .menu-item.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-soft-border);
-  color: var(--accent);
+  background: var(--app-accent-soft);
+  border-color: var(--app-accent-soft-border);
+  color: var(--app-accent);
   font-weight: 600;
 }
 
@@ -274,7 +261,7 @@ onUnmounted(() => {
 .broadcast h2,
 .logs h2 {
   font-size: 13px;
-  color: var(--text-3);
+  color: var(--app-text-3);
   margin: 0;
   font-weight: 500;
 }
@@ -288,23 +275,23 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--app-border);
   border-radius: 6px;
-  background: var(--bg-raised);
-  color: var(--text-1);
+  background: var(--app-bg-raised);
+  color: var(--app-text-1);
   font-size: 13px;
 }
 
 .broadcast input::placeholder {
-  color: var(--text-3);
+  color: var(--app-text-3);
 }
 
 .broadcast button {
   padding: 6px 12px;
   border: none;
   border-radius: 6px;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--app-accent);
+  color: var(--app-accent-contrast);
   font-size: 13px;
   cursor: pointer;
 }
@@ -335,14 +322,14 @@ onUnmounted(() => {
 }
 
 .time {
-  color: var(--text-3);
+  color: var(--app-text-3);
   flex: none;
 }
 
 .source {
   flex: none;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--app-accent);
 }
 
 .source[data-source="host"] {
@@ -355,7 +342,7 @@ onUnmounted(() => {
 
 .empty {
   font-size: 12px;
-  color: var(--text-3);
+  color: var(--app-text-3);
   margin: 0;
 }
 
@@ -374,8 +361,8 @@ onUnmounted(() => {
   gap: 4px;
   padding: 6px 12px 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-surface);
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-bg-surface);
 }
 
 .tab {
@@ -383,24 +370,24 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 7px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--app-border);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  background: var(--bg-tab-inactive);
-  color: var(--text-1);
+  background: var(--app-bg-tab-inactive);
+  color: var(--app-text-1);
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .tab:hover {
-  background: var(--accent-soft);
+  background: var(--app-accent-soft);
 }
 
 .tab.active {
-  background: var(--bg-raised);
-  border-color: var(--accent-soft-border);
-  color: var(--accent);
+  background: var(--app-bg-raised);
+  border-color: var(--app-accent-soft-border);
+  color: var(--app-accent);
   font-weight: 600;
 }
 
@@ -417,13 +404,13 @@ onUnmounted(() => {
 
 .reload-hint {
   font-size: 12px;
-  color: var(--text-3);
+  color: var(--app-text-3);
 }
 
 .tab-close {
   padding: 0 2px;
   border-radius: 4px;
-  color: var(--text-3);
+  color: var(--app-text-3);
   font-size: 14px;
   line-height: 1;
 }
@@ -436,7 +423,7 @@ onUnmounted(() => {
 .tabs-placeholder {
   padding: 7px 4px;
   font-size: 13px;
-  color: var(--text-3);
+  color: var(--app-text-3);
 }
 
 .pane-area {
@@ -457,7 +444,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  color: var(--text-2);
+  color: var(--app-text-2);
   font-size: 15px;
 }
 
@@ -468,22 +455,5 @@ onUnmounted(() => {
 
 .empty-hint {
   font-size: 13px;
-}
-
-/* 暗色主题:只覆盖变量,新增组件无需再写主题分支 */
-.layout[data-theme="dark"] {
-  --bg-page: #111827;
-  --bg-surface: #0b1220;
-  --bg-raised: #1f2937;
-  --bg-hover: #1f2937;
-  --bg-tab-inactive: #0b1220;
-  --border: #1f2937;
-  --text-1: #d1d5db;
-  --text-2: #9ca3af;
-  --text-3: #6b7280;
-  --accent: #c7d2fe;
-  --accent-contrast: #0b1220;
-  --accent-soft: #312e81;
-  --accent-soft-border: #4338ca;
 }
 </style>
