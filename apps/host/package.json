@@ -24,7 +24,6 @@
     "@repo/typescript": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
-    "@vizejs/vite-plugin-musea": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "unplugin-vue-components": "catalog:",

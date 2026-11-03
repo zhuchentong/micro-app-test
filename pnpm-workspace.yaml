@@ -17,7 +17,6 @@ catalog:
   wujie: ^2.1.0
   pinia: ^4.1.0
   "@vizejs/vite-plugin": ^0.608.0
-  "@vizejs/vite-plugin-musea": ^0.608.0
   oxlint-plugin-vize: ^0.608.0
   vize: ^0.608.0
   "@clack/prompts": ^1.8.1

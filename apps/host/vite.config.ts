@@ -1,7 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { musea } from "@vizejs/vite-plugin-musea";
 import Components from "unplugin-vue-components/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
@@ -19,7 +18,6 @@ export default defineConfig(
     // 5173 常被其他本地项目占用,固定 5175 保证入口 URL 稳定
     server: { port: 5175, strictPort: true },
     plugins: [
-      musea({ include: ["**/*.art.vue"], basePath: "/__musea__" }),
       tailwindcss(),
       // @repo/ui 组件免 import 按需引入(dirs 递归:components/ui 上游件原名,components/app 自研件前缀名)
       // dts 生成物入 src/types/generated/(gitignored),dev/build 启动时自动重新生成
