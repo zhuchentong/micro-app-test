@@ -79,7 +79,7 @@ function openProduct(id: string): void {
 }
 
 .product-item:hover {
-  border-color: #c7d2fe;
+  border-color: var(--app-accent-soft-border);
 }
 
 .product-item .name {
@@ -90,7 +90,7 @@ function openProduct(id: string): void {
 
 .product-item .meta {
   font-size: 13px;
-  color: #4f46e5;
+  color: var(--app-accent-deep);
   text-align: right;
 }
 

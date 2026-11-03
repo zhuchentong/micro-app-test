@@ -33,6 +33,12 @@ interface AccentPreset {
 }
 const accentPresets: AccentPreset[] = [
   {
+    // 空 tokens = 回落内置青色(与「重置」等效,切换器内直达);默认态由 activeAccent undefined 感知高亮
+    label: "青(默认)",
+    tokens: {},
+  },
+  {
+    // 以下为演示性备选:显式 override builtin,值不随 themes 升级变化
     label: "靛蓝",
     tokens: {
       "--app-accent": "#4f46e5",
@@ -69,8 +75,14 @@ const accentPresets: AccentPreset[] = [
     },
   },
 ];
-const activeAccent = computed(() => themeStore.custom["--app-accent"] ?? "");
+// unset(无自定义)为 undefined,与「青(默认)」空 tokens 精确匹配实现默认态高亮
+const activeAccent = computed(() => themeStore.custom["--app-accent"]);
 function applyAccent(preset: AccentPreset): void {
+  // 空 tokens = 回落内置 preset(整体清空 custom,与 resetAccent 等效)
+  if (Object.keys(preset.tokens).length === 0) {
+    resetAccent();
+    return;
+  }
   themeStore.setCustom({ ...themeStore.custom, ...preset.tokens });
 }
 function resetAccent(): void {
@@ -155,10 +167,12 @@ onUnmounted(() => {
 <template>
   <div class="layout">
     <aside class="sider">
-      <h1 class="brand">无界 MVP · 主应用</h1>
+      <h1 class="brand"><icon-svg-logo /> 无界 MVP · 主应用</h1>
 
       <button class="theme-toggle" type="button" @click="themeStore.toggleTheme()">
-        {{ themeStore.theme === "light" ? "🌙 暗色" : "☀️ 亮色" }}
+        <icon-tdesign-moon v-if="themeStore.theme === 'light'" />
+        <icon-tdesign-sunny v-else />
+        {{ themeStore.theme === "light" ? "暗色" : "亮色" }}
       </button>
 
       <section class="custom-theme">
@@ -224,20 +238,31 @@ onUnmounted(() => {
     </aside>
 
     <main class="workbench">
-      <div class="tabs-bar">
-        <button
+      <div class="tabs-bar" role="tablist">
+        <!-- Tab 用 div role=tab:内部需要嵌套真关闭按钮,button 嵌套 button 属无效 HTML(lint 强制) -->
+        <div
           v-for="tab in tabs.tabs"
           :key="tab.id"
           class="tab"
           :class="{ active: tab.id === tabs.activeId, cold: tab.state === 'cold' }"
-          type="button"
+          role="tab"
+          :aria-selected="tab.id === tabs.activeId"
+          tabindex="0"
           @click="tabs.activate(tab.id)"
+          @keydown.enter.prevent="tabs.activate(tab.id)"
+          @keydown.space.prevent="tabs.activate(tab.id)"
         >
           <span class="tab-title">{{ tab.title }}</span>
           <span v-if="tab.state === 'cold'" class="reload-hint" title="实例已释放,激活时重建"
           >↻</span>
-          <span aria-hidden="true" class="tab-close" @click.stop="closeTab(tab.id)">×</span>
-        </button>
+          <button
+            class="tab-close"
+            type="button"
+            :aria-label="`关闭 Tab · ${tab.title}`"
+            @click.stop="closeTab(tab.id)"
+            @keydown.stop
+          >×</button>
+        </div>
         <span v-if="tabs.tabs.length === 0" class="tabs-placeholder"
         >点击左侧菜单打开子应用页面</span>
       </div>
@@ -281,12 +306,18 @@ onUnmounted(() => {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 16px;
   margin: 0;
 }
 
 .theme-toggle {
   align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
   border: 1px solid var(--app-border);
   border-radius: 6px;
@@ -511,6 +542,11 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.tab:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: -2px;
+}
+
 .tab:hover {
   background: var(--app-accent-soft);
 }
@@ -540,10 +576,19 @@ onUnmounted(() => {
 
 .tab-close {
   padding: 0 2px;
+  border: none;
   border-radius: 4px;
+  background: transparent;
   color: var(--app-text-3);
+  font-family: inherit;
   font-size: 14px;
   line-height: 1;
+  cursor: pointer;
+}
+
+.tab-close:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 1px;
 }
 
 .tab-close:hover {

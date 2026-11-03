@@ -109,10 +109,10 @@ dd {
 
 .counter button {
   padding: 6px 16px;
-  border: 1px solid #4f46e5;
+  border: 1px solid var(--app-accent-deep);
   border-radius: 8px;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--app-accent-soft);
+  color: var(--app-accent-deep);
   font-size: 14px;
   cursor: pointer;
 }
