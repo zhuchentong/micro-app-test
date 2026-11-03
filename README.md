@@ -28,6 +28,14 @@ vp run -r build
 vp run dev
 ```
 
+- Run the browser E2E smoke(10 条链路,依赖全局 agent-browser):
+
+自动启动/停止 dev 进程并清理同端口残留,与手动 dev 并行运行时互杀属预期行为。
+
+```bash
+vp run e2e
+```
+
 ## Store 同步(host → 子应用)
 
 各应用持有独立的 pinia 实例(子应用在 wujie 沙箱内),但共享 `@repo/store` 中同一份 `defineStore` 定义。host 是状态权威源:初始值(user/theme)经 `startApp` 的 props 水合到子应用 store,后续变更经 wujie bus 以 `host:state` 事件全量广播,子应用按 `rev` 判重后 `$patch` 到本地 store。子应用注册监听后还会发送 `sub:state-request` 握手,host 收到即回发当前快照 —— 保证注册后立即拿到最新状态,避免 host 启动早期的广播无人订阅。
