@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ready": "vp run check && vp run -r test && vp run build",
+    "ready": "vp check && vp run -r test && vp run build",
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "prepare": "vp config"
