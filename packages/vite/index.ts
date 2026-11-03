@@ -4,6 +4,9 @@ import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
+import Icons from "unplugin-icons/vite";
+import { FileSystemIconLoader } from "unplugin-icons/loaders";
+import IconsResolver from "unplugin-icons/resolver";
 import Components from "unplugin-vue-components/vite";
 import external from "vite-plugin-external";
 import type { Plugin, UserConfig } from "vite";
@@ -135,11 +138,33 @@ export function defineAppConfig(options: AppOptions = {}) {
         ...(appRoot
           ? [
               tailwindcss(),
+              // iconify 图标按需编译:<icon-tdesign-xxx /> → 内联 SVG 组件,零运行时依赖、无网络请求
+              // 数据源 @iconify-json/tdesign 已显式安装,CI 无需 autoInstall
+              Icons({
+                autoInstall: false,
+                // pnpm 严格隔离下 tdesign 数据仅在本包 node_modules,插件默认从 process.cwd()(app root)
+                // 解析会 not found;本模块 import.meta.url 打包后恒为源码位置,锚定包目录即可
+                collectionsNodeResolvePath: dirname(fileURLToPath(import.meta.url)),
+                // 本地图标集合:<icon-svg-xxx /> 从 <app>/src/assets/svgs/xxx.svg 按需加载
+                // (appRoot 分支内 cwd 恒为 app root,各 app 维护独立 svg 目录;目录缺失时仅该集合图标不可用,不影响启动)
+                customCollections: {
+                  svg: FileSystemIconLoader(join(process.cwd(), "src/assets/svgs")),
+                },
+              }),
               // @repo/ui 组件免 import 按需引入(dirs 递归:components/ui 上游件原名,components/app 自研件前缀名)
               // dts 生成物入 src/types/generated/(gitignored),dev/build 启动时自动重新生成
+              // 图标经 IconsResolver 按需解析:prefix "icon" → <icon-tdesign-xxx /> / <icon-svg-xxx />,
+              // enabledCollections 锁定 TDesign 防误用其它集合,customCollections 注册本地图标集合 svg
               Components({
                 dirs: [join(uiSrcDir, "components")],
                 dts: "src/types/generated/components.d.ts",
+                resolvers: [
+                  IconsResolver({
+                    prefix: "icon",
+                    enabledCollections: ["tdesign"],
+                    customCollections: ["svg"],
+                  }),
+                ],
               }),
               ...(withSharedExternals ? [sharedExternalsPlugin(), sharedDepsHtmlPlugin()] : []),
               ...(options.plugins ?? []),

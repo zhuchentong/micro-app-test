@@ -8,10 +8,12 @@
     ".": "./index.ts"
   },
   "devDependencies": {
+    "@iconify-json/tdesign": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
     "pinia": "catalog:",
     "typescript": "catalog:",
+    "unplugin-icons": "catalog:",
     "unplugin-vue-components": "catalog:",
     "vite": "catalog:",
     "vite-plugin-external": "catalog:",
