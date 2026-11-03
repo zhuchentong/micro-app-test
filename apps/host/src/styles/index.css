@@ -3,11 +3,11 @@
 @import "tailwindcss";
 @import "@repo/themes/tokens.css";
 /* Tailwind v4 不跟随 pnpm symlink:dist 真实路径由 vite.config 生成(gitignored) */
-@import "./styles/generated/ui.source.css";
+@import "./generated/ui.source.css";
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  /* 主题变量由 host(:root)继承;独立运行时 main.ts 自行应用 preset */
+  /* 主题变量由 main.ts applyTheme 写入 :root;dark 下滚动溢出区域不再露白 */
   color: var(--app-text-1);
   background: var(--app-bg-page);
 }

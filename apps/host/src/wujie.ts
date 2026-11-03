@@ -5,6 +5,29 @@ import { startTabApp, tabInstanceName } from "@repo/wujie-kit/host";
 import { apps } from "./apps";
 import { configureTabOps } from "./stores/tabs";
 
+/**
+ * 共享依赖注入(仅生产):jsBeforeLoaders 在子应用任何 JS 之前执行,
+ * 把 host realm 的 window.__MICRO_SHARED__ 引用传入 iframe 沙箱(同域可达 parent)。
+ * dev 不注入:dev 无共享 bundle,子应用走 Vite 预打包依赖,引用保持 undefined 且无读取方。
+ */
+const sharedDepsPlugins = import.meta.env.PROD
+  ? [
+      {
+        jsBeforeLoaders: [
+          {
+            content: [
+              "if (window.parent && window.parent.__MICRO_SHARED__) {",
+              "  window.__MICRO_SHARED__ = window.parent.__MICRO_SHARED__;",
+              "} else {",
+              '  console.error("[shared-deps] 主应用未提供 window.__MICRO_SHARED__,子应用共享依赖缺失");',
+              "}",
+            ].join("\n"),
+          },
+        ],
+      },
+    ]
+  : undefined;
+
 /** createHostStoreSync 的入参类型(从契约反推,避免与 @repo/store 内部类型耦合) */
 type StoreSyncOptions = Parameters<typeof createHostStoreSync>[0];
 
@@ -42,6 +65,7 @@ export function initWujie(pinia: Pinia, bus: unknown): void {
         startTabApp({
           startApp,
           apps,
+          startAppPlugins: sharedDepsPlugins,
           baseProps,
           tab: {
             id: tab.id,

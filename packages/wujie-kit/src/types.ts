@@ -40,3 +40,27 @@ export interface HostProps {
   /** Tab 模式注入;传统单容器模式/独立运行时为 undefined */
   tab?: TabInfo;
 }
+
+/**
+ * 共享依赖运行时:host 的 public/generated/shared-deps.js 挂载,子应用经 jsBeforeLoaders
+ * 从 window.parent 注入引用。框架命名空间按 unknown 弱类型化,避免本包与框架版本耦合。
+ */
+export interface MicroSharedRuntime {
+  vue: unknown;
+  pinia: unknown;
+  vueRouter: unknown;
+  /** 共享 bundle 生成时的解析版本(根 scripts/build-shared.mjs 注入) */
+  version: { vue: string; pinia: string; vueRouter: string };
+}
+
+declare global {
+  interface Window {
+    __MICRO_SHARED__?: MicroSharedRuntime;
+  }
+  /**
+   * 子应用构建期期望的共享依赖版本(@repo/vite 工厂 define 注入;
+   * 独立构建/旧产物缺失时,sub.ts 的版本漂移检查自动跳过)。
+   * 用 var 而非 const:多 app 虚拟项目合并诊断时环境声明需可合并(const 会 TS2451)。
+   */
+  var __MICRO_SHARED_VERSIONS__: Record<string, string> | undefined;
+}

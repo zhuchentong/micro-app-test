@@ -9,7 +9,11 @@ export interface HostApp extends MicroApp {
   menu: MenuEntry[];
 }
 
-/** 子应用注册表(事件契约见 @repo/wujie-kit 的 appEvents) */
+/**
+ * 子应用注册表(事件契约见 @repo/wujie-kit 的 appEvents)。
+ * 注:domain 的端口与各子应用 vite.config.ts 的 server.port 字面量人工保持同步
+ * (dev.mjs/stop.mjs 自动发现端口无需登记;此处为主应用跨域 fetch 的运行时配置)。
+ */
 export const apps: HostApp[] = [
   {
     key: "sub-a",

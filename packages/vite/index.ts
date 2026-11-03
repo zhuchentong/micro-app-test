@@ -1,10 +1,12 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
 import Components from "unplugin-vue-components/vite";
-import type { UserConfig } from "vite";
+import external from "vite-plugin-external";
+import type { Plugin, UserConfig } from "vite";
 
 /** app 侧 vite.config.ts 只需声明的差异项 */
 export interface AppOptions {
@@ -13,11 +15,79 @@ export interface AppOptions {
   /** 某 app 的额外插件(追加在共享插件之后) */
   plugins?: UserConfig["plugins"];
   define?: UserConfig["define"];
+  /** 生产构建将共享依赖(vue/pinia/vue-router)external 到 window.__MICRO_SHARED__;默认 true */
+  externalSharedDeps?: boolean;
+}
+
+/**
+ * 共享依赖 → window.__MICRO_SHARED__ 命名空间。
+ * 与 scripts/build-shared.mjs 的产物(3 份 public/generated/shared-deps.js)一一对应:
+ * host index.html 同步加载;子应用经 jsBeforeLoaders 从 window.parent 注入,独立运行走 <script ignore>。
+ */
+const SHARED_DEPS: Record<string, string> = {
+  vue: "vue",
+  pinia: "pinia",
+  "vue-router": "vueRouter",
+};
+
+/**
+ * 读取本包依赖树内共享依赖的解析后版本(与 build-shared.mjs 同源,均为 catalog 锁定版本)。
+ * 读取失败返回 undefined,调用方跳过版本比对注入,不阻塞构建。
+ */
+function readSharedVersions(): Record<string, string> | undefined {
+  try {
+    const req = createRequire(import.meta.url);
+    return Object.fromEntries(
+      Object.keys(SHARED_DEPS).map((name) => {
+        let pkgPath: string;
+        try {
+          pkgPath = req.resolve(`${name}/package.json`);
+        } catch {
+          pkgPath = join(dirname(req.resolve(name)), "../package.json");
+        }
+        return [SHARED_DEPS[name], String(JSON.parse(readFileSync(pkgPath, "utf8")).version)];
+      }),
+    );
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * 生产构建将共享依赖 external 到 window.__MICRO_SHARED__。
+ * 机制:插件为命名 external 生成 CJS shim stash(module.exports = window.__MICRO_SHARED__.<ns>)
+ * 并内联进产物,由 rolldown 互操作解析 named imports。apply 限定 build:dev 保持 Vite 预打包。
+ */
+function sharedExternalsPlugin(): Plugin {
+  return external({
+    apply: "build",
+    externals: Object.fromEntries(
+      Object.entries(SHARED_DEPS).map(([id, ns]) => [id, `window.__MICRO_SHARED__.${ns}`]),
+    ),
+  });
+}
+
+/**
+ * dev(serve)阶段从 index.html 剥离 shared-deps 引用:public/libs 产物仅生产构建生成,
+ * 避免开发时 404 噪音;build 保留(host 同步加载 / 子应用 <script ignore> 由 wujie 跳过)。
+ */
+function sharedDepsHtmlPlugin(): Plugin {
+  const tagPattern = /[ \t]*<script src="[^"]*generated\/shared-deps\.js"[^>]*><\/script>\r?\n?/g;
+  return {
+    name: "micro-shared-deps-html",
+    transformIndexHtml: {
+      order: "pre",
+      handler(html, ctx) {
+        return ctx.server ? html.replace(tagPattern, "") : html;
+      },
+    },
+  };
 }
 
 /**
  * 共享 app 级 vite 配置工厂:封装 tailwindcss 挂载、@repo/ui 组件按需引入与
  * ui.source.css 生成,app 侧 vite.config.ts 仅保留 server 差异项。
+ * 外加 wujie 依赖共享:生产构建 external vue/pinia/vue-router → window.__MICRO_SHARED__。
  *
  * 执行上下文(已实测):
  * - 本工厂被 config 打包后 import.meta.url 恒为本模块源码位置
@@ -45,10 +115,17 @@ export function defineAppConfig(options: AppOptions = {}) {
     );
   }
 
+  const sharedVersions = readSharedVersions();
+  const withSharedExternals = options.externalSharedDeps !== false;
+
   return defineConfig(
     {
       server: options.server,
-      define: options.define,
+      define: {
+        // 子应用构建期期望版本:wujie-kit/src/sub.ts 的版本漂移检查消费;缺失时检查自动跳过
+        ...(sharedVersions ? { __MICRO_SHARED_VERSIONS__: JSON.stringify(sharedVersions) } : {}),
+        ...options.define,
+      },
       plugins: [
         ...(appRoot
           ? [
@@ -59,6 +136,7 @@ export function defineAppConfig(options: AppOptions = {}) {
                 dirs: [join(uiSrcDir, "components")],
                 dts: "src/types/generated/components.d.ts",
               }),
+              ...(withSharedExternals ? [sharedExternalsPlugin(), sharedDepsHtmlPlugin()] : []),
               ...(options.plugins ?? []),
             ]
           : []),

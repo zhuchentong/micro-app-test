@@ -13,6 +13,8 @@ export interface StartAppOptions {
   alive?: boolean;
   props?: HostProps;
   loadError?: (url: string, error: unknown) => void;
+  // 注:不在此声明 wujie 的 plugins 字段(unknown 与 wujie 具体插件类型不可互赋,会破坏
+  // StartAppFn 的参数可赋值性);共享依赖注入经 startTabApp 的 startAppPlugins 以 spread 透传
 }
 
 export type StartAppFn = (options: StartAppOptions) => unknown;
@@ -57,7 +59,8 @@ export interface StarterOptions {
   onStarted?: (app: MicroApp, url: string) => void;
 }
 
-/** 创建主应用的子应用启动器(sync 路由由 wujie 内部处理) */
+/** 创建主应用的子应用启动器(sync 路由由 wujie 内部处理)。
+ * 注:共享依赖 jsBeforeLoaders 注入仅在多 Tab 模式(startTabApp)接入;本单容器遗留路径未透传 */
 export function createMicroAppStarter(
   options: StarterOptions,
 ): (key: string, path?: string) => void {
@@ -192,6 +195,8 @@ export interface TabAppOptions {
   alive?: boolean;
   onError?: (tab: TabDescriptor, url: string, error: unknown) => void;
   onStarted?: (tab: TabDescriptor, url: string) => void;
+  /** 透传 startApp 的 plugins(共享依赖 jsBeforeLoaders 注入);undefined 时省略字段。以 spread 透传,本包不感知内容 */
+  startAppPlugins?: unknown;
 }
 
 /**
@@ -199,7 +204,16 @@ export interface TabAppOptions {
  * 同 page 不同参数 → 不同 tabId → 不同实例,天然隔离(官方 Issue #391/#516 约束)。
  */
 export function startTabApp(options: TabAppOptions): void {
-  const { startApp, apps, baseProps, tab, alive = true, onError, onStarted } = options;
+  const {
+    startApp,
+    apps,
+    baseProps,
+    tab,
+    alive = true,
+    onError,
+    onStarted,
+    startAppPlugins,
+  } = options;
   const app = apps.find((item) => item.key === tab.app);
   if (!app) {
     console.error(`[wujie] 未注册的子应用: ${tab.app}`);
@@ -223,6 +237,7 @@ export function startTabApp(options: TabAppOptions): void {
         el: tab.el,
         sync: false,
         alive,
+        ...(startAppPlugins ? { plugins: startAppPlugins } : {}),
         props: { ...resolvedBase, tab: { id: tab.id, app: tab.app, page: tab.page } },
         loadError: (loadUrl, error) => reportError(loadUrl, error),
       }),

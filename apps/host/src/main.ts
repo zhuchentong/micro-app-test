@@ -6,9 +6,15 @@ import { applyTheme, toThemeMode } from "@repo/themes";
 import App from "./App.vue";
 import { initWujie } from "./wujie";
 import { useThemeStore, useUserStore } from "@repo/store";
-import "./style.css";
+import "./styles/index.css";
 
 const pinia = createPinia();
+// 共享依赖守卫:生产构建的框架代码来自 public/generated/shared-deps.js(生成脚本 scripts/build-shared.mjs)
+if (import.meta.env.PROD && !window.__MICRO_SHARED__) {
+  throw new Error(
+    "[shared-deps] 缺少共享依赖 bundle,请先执行 node scripts/build-shared.mjs(仓库根)",
+  );
+}
 // 演示用户:host 为状态权威源,初始数据从这里下发(经 props 与握手快照同步给子应用)
 useUserStore(pinia).setUser({ id: "u1", name: "宿主张三" });
 // 初始化 wujie(内部创建 host→子应用状态同步器),须在挂载前完成

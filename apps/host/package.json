@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "vp build",
+    "build": "node ../../scripts/build-shared.mjs && vp build",
     "preview": "vp preview",
     "test": "vp test"
   },
@@ -26,6 +26,7 @@
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vue-router": "catalog:"
   }
 }

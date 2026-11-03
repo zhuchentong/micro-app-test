@@ -10,10 +10,13 @@
   "devDependencies": {
     "@tailwindcss/vite": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
+    "pinia": "catalog:",
     "typescript": "catalog:",
     "unplugin-vue-components": "catalog:",
     "vite": "catalog:",
+    "vite-plugin-external": "catalog:",
     "vite-plus": "catalog:",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   }
 }

@@ -18,6 +18,8 @@ export default defineConfig({
       "packages/ui/src/components/ui/**",
       "**/src/types/generated/**",
       "**/src/styles/generated/**",
+      // wujie 共享依赖产物(build-shared.mjs 生成,不入库):压缩文件禁格式化与 lint
+      "**/public/libs/**",
     ],
   },
   lint: {
@@ -75,6 +77,7 @@ export default defineConfig({
       "packages/ui/src/components/ui/**",
       "**/src/types/generated/**",
       "**/src/styles/generated/**",
+      "**/public/libs/**",
     ],
   }),
 });

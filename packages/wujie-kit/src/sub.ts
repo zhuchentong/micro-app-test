@@ -128,6 +128,7 @@ export function createSubBus(config: SubAppConfig): SubBus {
  */
 export function mountWujieApp(create: () => VueApp, selector = "#app"): void {
   if (window.__POWERED_BY_WUJIE__ && window.__WUJIE) {
+    assertSharedVersions();
     let appInstance: VueApp | null = null;
 
     window.__WUJIE_MOUNT = () => {
@@ -145,5 +146,23 @@ export function mountWujieApp(create: () => VueApp, selector = "#app"): void {
   } else {
     // 独立运行(直接访问子应用端口)
     create().mount(selector);
+  }
+}
+
+/** 共享依赖版本漂移检查(仅嵌入模式):子应用构建期期望版本 vs host 提供的 window.__MICRO_SHARED__ */
+function assertSharedVersions(): void {
+  // 工厂未注入构建期期望(旧产物/独立构建)时跳过;共享 bundle 缺失由 host 侧 jsBeforeLoaders 兜底告警
+  if (typeof __MICRO_SHARED_VERSIONS__ === "undefined") return;
+  const actual = window.__MICRO_SHARED__?.version;
+  if (!actual) return;
+  const expected = __MICRO_SHARED_VERSIONS__;
+  // 清单以构建期注入的 expected 为准动态比对,避免在此处二次硬编码共享依赖列表
+  const drifted = Object.entries(expected)
+    .filter(([key, expectedVersion]) => actual[key as keyof typeof actual] !== expectedVersion)
+    .map(([key]) => key);
+  if (drifted.length > 0) {
+    console.error(
+      `[shared-deps] 共享依赖版本漂移(差异: ${drifted.join(", ")}): 期望 ${JSON.stringify(expected)} vs 实际 ${JSON.stringify(actual)}`,
+    );
   }
 }

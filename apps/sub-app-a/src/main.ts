@@ -6,7 +6,7 @@ import { useThemeStore } from "@repo/store";
 import { applyTheme, toThemeMode } from "@repo/themes";
 import App from "./App.vue";
 import router from "./router";
-import "./style.css";
+import "./styles/index.css";
 
 mountWujieApp(() => {
   const app = createApp(App);
