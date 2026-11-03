@@ -12,8 +12,13 @@ export default defineConfig({
   fmt: {
     // tu-design vendor 区(components/ui)保持线上 registry 原样:格式化会破坏 components.lock.json
     // 的文件 hash,导致 CLI diff/升级判定失准。自研区(components/app)正常格式化。
-    // src/types/generated/ 为构建生成物(dts 等),不入库,不参与格式化
-    ignorePatterns: ["packages/ui/src/components/ui/**", "**/src/types/generated/**"],
+    // src/types/generated/、src/styles/generated/ 为构建生成物(dts、tailwind @source 等),
+    // 不入库,不参与格式化与 lint
+    ignorePatterns: [
+      "packages/ui/src/components/ui/**",
+      "**/src/types/generated/**",
+      "**/src/styles/generated/**",
+    ],
   },
   lint: {
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
@@ -69,6 +74,7 @@ export default defineConfig({
       "node_modules/**",
       "packages/ui/src/components/ui/**",
       "**/src/types/generated/**",
+      "**/src/styles/generated/**",
     ],
   }),
 });

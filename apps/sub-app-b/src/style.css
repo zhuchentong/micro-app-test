@@ -3,7 +3,7 @@
 @import "tailwindcss";
 @import "@repo/themes/tokens.css";
 /* Tailwind v4 不跟随 pnpm symlink:dist 真实路径由 vite.config 生成(gitignored) */
-@import "./ui.source.css";
+@import "./styles/generated/ui.source.css";
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
