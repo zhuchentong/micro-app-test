@@ -20,11 +20,9 @@
   },
   "devDependencies": {
     "@repo/typescript": "workspace:*",
-    "@tailwindcss/vite": "catalog:",
-    "@vizejs/vite-plugin": "catalog:",
+    "@repo/vite": "workspace:*",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "unplugin-vue-components": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

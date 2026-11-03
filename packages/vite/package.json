@@ -1,0 +1,19 @@
+{
+  "name": "@repo/vite",
+  "version": "0.0.0",
+  "private": true,
+  "description": "共享 app 级 vite 配置工厂(tailwindcss 挂载 + @repo/ui 组件按需引入 + ui.source 生成)",
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "catalog:",
+    "@vizejs/vite-plugin": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-vue-components": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue": "catalog:"
+  }
+}

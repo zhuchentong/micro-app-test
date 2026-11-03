@@ -269,21 +269,15 @@ importers:
       '@repo/typescript':
         specifier: workspace:*
         version: link:../../packages/typescript
-      '@tailwindcss/vite':
-        specifier: 'catalog:'
-        version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
-      '@vizejs/vite-plugin':
-        specifier: 'catalog:'
-        version: 0.608.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(typescript@7.0.2)(vite-plus@1.3.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))(yaml@2.9.1)
+      '@repo/vite':
+        specifier: workspace:*
+        version: link:../../packages/vite
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
-      unplugin-vue-components:
-        specifier: 'catalog:'
-        version: 32.1.0(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
@@ -321,21 +315,15 @@ importers:
       '@repo/typescript':
         specifier: workspace:*
         version: link:../../packages/typescript
-      '@tailwindcss/vite':
-        specifier: 'catalog:'
-        version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
-      '@vizejs/vite-plugin':
-        specifier: 'catalog:'
-        version: 0.608.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(typescript@7.0.2)(vite-plus@1.3.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))(yaml@2.9.1)
+      '@repo/vite':
+        specifier: workspace:*
+        version: link:../../packages/vite
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
-      unplugin-vue-components:
-        specifier: 'catalog:'
-        version: 32.1.0(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
@@ -370,21 +358,15 @@ importers:
       '@repo/typescript':
         specifier: workspace:*
         version: link:../../packages/typescript
-      '@tailwindcss/vite':
-        specifier: 'catalog:'
-        version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
-      '@vizejs/vite-plugin':
-        specifier: 'catalog:'
-        version: 0.608.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(typescript@7.0.2)(vite-plus@1.3.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))(yaml@2.9.1)
+      '@repo/vite':
+        specifier: workspace:*
+        version: link:../../packages/vite
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
-      unplugin-vue-components:
-        specifier: 'catalog:'
-        version: 32.1.0(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
@@ -490,6 +472,30 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      vue:
+        specifier: 'catalog:'
+        version: 3.5.44(typescript@7.0.2)
+
+  packages/vite:
+    devDependencies:
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.3.3(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))
+      '@vizejs/vite-plugin':
+        specifier: 'catalog:'
+        version: 0.608.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(jiti@2.7.0)(typescript@7.0.2)(vite-plus@1.3.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))(yaml@2.9.1)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      unplugin-vue-components:
+        specifier: 'catalog:'
+        version: 32.1.0(@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1))(vue@3.5.44(typescript@7.0.2))
+      vite:
+        specifier: 'catalog:'
+        version: '@voidzero-dev/vite-plus-core@1.3.0(@types/node@24.19.2)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)'
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.3.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
       vue:
         specifier: 'catalog:'
         version: 3.5.44(typescript@7.0.2)
