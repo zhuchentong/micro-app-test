@@ -3,7 +3,11 @@ import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
 
 export default defineConfig({
   staged: {
-    "*": "vp run check -- --fix",
+    // 源码文件走完整 check(格式化 + lint + typecheck)
+    "*.{ts,tsx,vue,js,mjs,cjs}": "vp run check -- --fix",
+    // 纯配置/文档只格式化:Corsa typecheck 在 staged 无源文件时会误报
+    // "No supported source files were selected"(json-only 提交的边界误伤)
+    "*.{json,md,css,html,yaml,yml}": "vp run fmt -- --fix",
   },
   fmt: {
     // tu-design vendor 区(components/ui)保持线上 registry 原样:格式化会破坏 components.lock.json
