@@ -29,13 +29,15 @@ export function createHostStoreSync(options: { pinia: Pinia; bus: SyncBus }): Ho
     bus.$emit(appEvents.state, {
       user: { ...user.user },
       theme: theme.theme,
+      custom: { ...theme.custom },
       rev: ++rev,
     } satisfies HostStatePayload);
   }
 
-  // 自动广播:任一共享 store 变更即发快照(emitSnapshot 不改 store,无回环风险)
+  // 自动广播:任一共享 store 变更即发快照(emitSnapshot 不改 store,无回环风险)。
+  // custom 引用在 setCustom 中整体替换,浅拷贝进 watch 源即可感知变更
   const stopWatch = watch(
-    () => ({ user: { ...user.user }, theme: theme.theme }),
+    () => ({ user: { ...user.user }, theme: theme.theme, custom: { ...theme.custom } }),
     () => emitSnapshot(),
   );
 

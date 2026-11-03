@@ -152,7 +152,7 @@ test("register 两次仅注册一个处理器,发一次事件只更新一次", (
 
   bus.$emit(appEvents.state, { user: { id: "u1", name: "宿主" }, theme: "dark", rev: 1 });
 
-  expect(actionCalls).toBe(2); // setUser + setTheme,而非 4
+  expect(actionCalls).toBe(3); // setUser + setTheme + setCustom,而非 6
 });
 
 test("dispose 后事件不再生效", () => {
@@ -226,6 +226,33 @@ test("握手:子应用注册后请求快照,host 回发并完成首次同步", (
   expect(user.user).toEqual({ id: "u1", name: "宿主" });
 
   host.stop();
+});
+
+test("custom 覆盖经握手快照同步到子应用 store", async () => {
+  const hostPinia = createPinia();
+  const subPinia = createPinia();
+  const { bus } = createMockBus();
+  const host = createHostStoreSync({ pinia: hostPinia, bus });
+
+  // host 先设置自定义覆盖,子应用后注册 —— 握手回发即携带 custom
+  useThemeStore(hostPinia).setCustom({ "--app-accent": "#059669" });
+  await nextTick();
+  createSubStoreSync({ pinia: subPinia, bus }).register();
+
+  expect(useThemeStore(subPinia).custom).toEqual({ "--app-accent": "#059669" });
+  host.stop();
+});
+
+test("旧 host 快照缺 custom 字段,子应用按空覆盖处理(向后兼容)", () => {
+  const pinia = createPinia();
+  const { bus } = createMockBus();
+  const sync = createSubStoreSync({ pinia, bus });
+
+  sync.register();
+  bus.$emit(appEvents.state, { user: { id: "u1", name: "宿主" }, theme: "light", rev: 1 });
+
+  expect(useThemeStore(pinia).custom).toEqual({});
+  sync.dispose();
 });
 
 test("握手:收到 stateRequest 后 host 回发一次 host:state", () => {

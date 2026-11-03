@@ -16,12 +16,36 @@ initWujie(pinia, bus);
 
 // 主题穿透:host 是唯一的 CSS 变量写入方。
 // 挂载前先应用一次防闪烁;子应用 DOM 位于宿主 document,变量经继承即时生效,
-// 切换主题(含未来接入 localStorage/API 的自定义值)无需子应用重新部署
+// 切换主题与自定义 token 覆盖均无需子应用重新部署
 const themeStore = useThemeStore(pinia);
-applyTheme(document.documentElement, toThemeMode(themeStore.theme));
+
+// 自定义 token 覆盖持久化(host 权威源:恢复与写入都在 host 侧,子应用零改动)
+const CUSTOM_STORAGE_KEY = "wujie-mvp:theme-custom:v1";
+function loadCustom(): Record<string, string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CUSTOM_STORAGE_KEY) ?? "null") as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+themeStore.setCustom(loadCustom());
+
+const applyCurrentTheme = (): void =>
+  applyTheme(document.documentElement, toThemeMode(themeStore.theme), themeStore.custom);
+applyCurrentTheme();
 watch(
-  () => themeStore.theme,
-  (mode) => applyTheme(document.documentElement, toThemeMode(mode)),
+  () => [themeStore.theme, themeStore.custom] as const,
+  () => {
+    applyCurrentTheme();
+    // setCustom 整体替换 custom 引用,此处与写变量同源持久化
+    localStorage.setItem(CUSTOM_STORAGE_KEY, JSON.stringify(themeStore.custom));
+  },
 );
 
 createApp(App).use(pinia).mount("#app");

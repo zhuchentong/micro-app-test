@@ -30,6 +30,12 @@ export interface BroadcastPayload {
 export interface HostStatePayload {
   user: { id: string; name: string };
   theme: string;
+  /**
+   * 自定义主题 token 覆盖(键为 --app-* CSS 变量名)。
+   * host 永远下发(可能为空对象):旧 host 缺省该字段时子应用按空覆盖处理,
+   * 保持向后兼容。applyTheme 在 preset 全量写入后应用覆盖。
+   */
+  custom?: Record<string, string>;
   /** 单调递增序号,子应用据此丢弃过期/乱序事件 */
   rev: number;
 }

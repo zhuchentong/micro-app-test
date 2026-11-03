@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { bus } from "wujie";
 import { appEvents } from "@repo/wujie-kit";
 import type { TabOpenPayload, TabRoutePayload, TabTitlePayload } from "@repo/wujie-kit";
@@ -19,6 +19,57 @@ interface LogEntry {
 
 // 主题状态(pinia 已在 main.ts 安装,setup 内直接使用);tabs store 依赖 wujie.ts 先 initWujie
 const themeStore = useThemeStore();
+
+/** 主题色预设:accent 及派生 soft/border/contrast 成组下发,保持组合观感一致 */
+interface AccentPreset {
+  label: string;
+  tokens: Record<string, string>;
+}
+const accentPresets: AccentPreset[] = [
+  {
+    label: "靛蓝",
+    tokens: {
+      "--app-accent": "#4f46e5",
+      "--app-accent-soft": "#eef2ff",
+      "--app-accent-soft-border": "#c7d2fe",
+      "--app-accent-contrast": "#ffffff",
+    },
+  },
+  {
+    label: "蓝",
+    tokens: {
+      "--app-accent": "#2563eb",
+      "--app-accent-soft": "#dbeafe",
+      "--app-accent-soft-border": "#93c5fd",
+      "--app-accent-contrast": "#ffffff",
+    },
+  },
+  {
+    label: "绿",
+    tokens: {
+      "--app-accent": "#059669",
+      "--app-accent-soft": "#d1fae5",
+      "--app-accent-soft-border": "#6ee7b7",
+      "--app-accent-contrast": "#ffffff",
+    },
+  },
+  {
+    label: "紫",
+    tokens: {
+      "--app-accent": "#7c3aed",
+      "--app-accent-soft": "#ede9fe",
+      "--app-accent-soft-border": "#c4b5fd",
+      "--app-accent-contrast": "#ffffff",
+    },
+  },
+];
+const activeAccent = computed(() => themeStore.custom["--app-accent"] ?? "");
+function applyAccent(preset: AccentPreset): void {
+  themeStore.setCustom({ ...themeStore.custom, ...preset.tokens });
+}
+function resetAccent(): void {
+  themeStore.setCustom({});
+}
 const tabs = useTabsStore();
 const logs = ref<LogEntry[]>([]);
 const broadcastText = ref("");
@@ -94,6 +145,24 @@ onUnmounted(() => {
       <button class="theme-toggle" type="button" @click="themeStore.toggleTheme()">
         {{ themeStore.theme === "light" ? "🌙 暗色" : "☀️ 亮色" }}
       </button>
+
+      <section class="custom-theme">
+        <h2>主题色</h2>
+        <div class="accent-row">
+          <button
+            v-for="preset in accentPresets"
+            :key="preset.label"
+            :aria-label="`切换主题色:${preset.label}`"
+            class="accent-dot"
+            :class="{ active: activeAccent === preset.tokens['--app-accent'] }"
+            :style="{ background: preset.tokens['--app-accent'] }"
+            :title="preset.label"
+            type="button"
+            @click="applyAccent(preset)"
+          />
+          <button class="accent-reset" type="button" @click="resetAccent">重置</button>
+        </div>
+      </section>
 
       <nav class="app-list">
         <section v-for="app in apps" :key="app.key" class="app-group">
@@ -250,6 +319,53 @@ onUnmounted(() => {
   border-color: var(--app-accent-soft-border);
   color: var(--app-accent);
   font-weight: 600;
+}
+
+.custom-theme {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.custom-theme h2 {
+  font-size: 13px;
+  color: var(--app-text-3);
+  margin: 0;
+  font-weight: 500;
+}
+
+.accent-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accent-dot {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.accent-dot.active {
+  border-color: var(--app-text-1);
+}
+
+.accent-reset {
+  padding: 2px 8px;
+  border: 1px solid var(--app-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--app-text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.accent-reset:hover {
+  background: var(--app-bg-hover);
+  color: var(--app-text-1);
 }
 
 .broadcast {

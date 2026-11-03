@@ -35,6 +35,8 @@ export function createSubStoreSync(options: { pinia: Pinia; bus?: SyncBus }): Su
     lastRev = payload.rev;
     userStore.setUser({ ...payload.user });
     themeStore.setTheme(payload.theme);
+    // custom 整体替换:缺省字段(旧 host)按空覆盖处理,与 preset 写入语义一致
+    themeStore.setCustom(payload.custom ?? {});
   }
 
   return {
