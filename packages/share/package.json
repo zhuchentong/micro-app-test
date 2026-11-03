@@ -12,11 +12,12 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@repo/store": "workspace:*",
     "vue": "catalog:"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
     "@repo/share": "workspace:*",
+    "@repo/typescript": "workspace:*",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
