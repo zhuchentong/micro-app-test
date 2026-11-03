@@ -1,0 +1,13 @@
+{
+  "framework": "vue",
+  "registry": "https://gopowerteam.github.io/tu-design/r/vue",
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib"
+  },
+  "tailwind": {
+    "css": "./src/styles.css"
+  }
+}
