@@ -12,17 +12,21 @@
   "dependencies": {
     "@repo/share": "workspace:*",
     "@repo/store": "workspace:*",
+    "@repo/themes": "workspace:*",
+    "@repo/ui": "workspace:*",
     "@repo/wujie-kit": "workspace:*",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@repo/config": "workspace:*",
+    "@repo/typescript": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
     "@vizejs/vite-plugin-musea": "catalog:",
+    "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "unocss": "catalog:",
+    "unplugin-vue-components": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

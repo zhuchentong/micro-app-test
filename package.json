@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@clack/prompts": "catalog:",
-    "@repo/config": "workspace:*",
+    "@types/node": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
     "oxlint-plugin-vize": "catalog:",
     "vite-plus": "catalog:",

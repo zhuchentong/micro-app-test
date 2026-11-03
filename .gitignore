@@ -31,6 +31,9 @@ dist-ssr
 
 # AI agent worktrees
 .claude/worktrees/
+# 构建生成物(vite.config 生成,不入库;dev/build 启动时自动重新生成)
+apps/*/src/ui.source.css
+apps/*/src/types/generated/
 !.vscode/
 !.vscode/settings.json
 !.vscode/extensions.json
