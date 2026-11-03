@@ -1,0 +1,23 @@
+{
+  "name": "@repo/themes",
+  "version": "0.0.0",
+  "private": true,
+  "description": "主题 token 单源:CSS 变量名 + light/dark 内置 preset + 运行时应用(内部包,源码直出)。host 为唯一写入方,子应用经 CSS 继承消费",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "tw-animate-css": "catalog:"
+  },
+  "devDependencies": {
+    "@repo/typescript": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -1,0 +1,113 @@
+/* tu-design(shadcn) tokens —— 项目所有 fork,来源:@tu-design/vue 官方 tokens.css。
+ * 组件源码已迁 packages/ui(tu-design CLI 分发),升级时用 `tu-design diff` 比对 registry 同步结构;桥接映射见各变量注释。
+ *
+ * 桥接约定:shadcn 语义色值改为 var(--app-*, 官方 oklch 兜底)。
+ * - host 嵌入:applyTheme 内联写 :root(--app-*),特异性最高,恒生效;
+ * - 子应用独立运行:main.ts 自行 applyTheme 写 preset;JS 未跑完前回落 oklch 兜底;
+ * - .dark 块同样桥接,暗色兜底取官方暗色 oklch,独立运行暗色不回亮色。
+ * --app-* 全集见 packages/themes/src/tokens.ts。 */
+@import "tw-animate-css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: var(--app-bg-page, oklch(1 0 0));
+  --foreground: var(--app-text-1, oklch(0.145 0 0));
+  --card: var(--app-bg-raised, oklch(1 0 0));
+  --card-foreground: var(--app-text-1, oklch(0.145 0 0));
+  --popover: var(--app-bg-raised, oklch(1 0 0));
+  --popover-foreground: var(--app-text-1, oklch(0.145 0 0));
+  --primary: var(--app-accent, oklch(0.205 0 0));
+  --primary-foreground: var(--app-accent-contrast, oklch(0.985 0 0));
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: var(--app-bg-surface, oklch(0.97 0 0));
+  --muted-foreground: var(--app-text-2, oklch(0.556 0 0));
+  --accent: var(--app-bg-hover, oklch(0.97 0 0));
+  --accent-foreground: var(--app-text-1, oklch(0.205 0 0));
+  /* 危险/状态色无 --app-* 对应,保留官方 oklch */
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.596 0.145 163.225);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.666 0.179 58.318);
+  --warning-foreground: oklch(0.985 0 0);
+  --info: oklch(0.546 0.245 262.881);
+  --info-foreground: oklch(0.985 0 0);
+  --border: var(--app-border, oklch(0.922 0 0));
+  --input: var(--app-border, oklch(0.922 0 0));
+  --ring: var(--app-accent, oklch(0.708 0 0));
+  --radius: 0.625rem;
+  /* 层叠序：表体 sticky < 表头 sticky < 浮层/弹窗（同级浮层按 DOM 挂载次序叠放） */
+  --z-sticky: 10;
+  --z-sticky-head: 20;
+  --z-overlay: 50;
+}
+
+.dark {
+  --background: var(--app-bg-page, oklch(0.145 0 0));
+  --foreground: var(--app-text-1, oklch(0.985 0 0));
+  --card: var(--app-bg-raised, oklch(0.205 0 0));
+  --card-foreground: var(--app-text-1, oklch(0.985 0 0));
+  --popover: var(--app-bg-raised, oklch(0.269 0 0));
+  --popover-foreground: var(--app-text-1, oklch(0.985 0 0));
+  --primary: var(--app-accent, oklch(0.922 0 0));
+  --primary-foreground: var(--app-accent-contrast, oklch(0.205 0 0));
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: var(--app-bg-surface, oklch(0.269 0 0));
+  --muted-foreground: var(--app-text-2, oklch(0.708 0 0));
+  --accent: var(--app-bg-hover, oklch(0.371 0 0));
+  --accent-foreground: var(--app-text-1, oklch(0.985 0 0));
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.696 0.17 162.48);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.205 0 0);
+  --info: oklch(0.623 0.214 259.815);
+  --info-foreground: oklch(0.985 0 0);
+  --border: var(--app-border, oklch(1 0 0 / 10%));
+  --input: var(--app-border, oklch(1 0 0 / 15%));
+  --ring: var(--app-accent, oklch(0.556 0 0));
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  /* 原 UnoCSS theme 的品牌色迁移;透明度修饰符(bg-brand/50)由 Tailwind v4 原生 color-mix 支持 */
+  --color-brand: var(--app-brand, #3273dc);
+  --color-brand-soft: var(--app-brand-soft, #eaf1fd);
+}
+
+/* 全局边框色兜底，对齐 shadcn v4 官方 tokens（上游另含 outline-ring/50，此处仅移植 border）：
+   裸 border 类不再回退 currentColor，而是使用 --border token。 */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+}
