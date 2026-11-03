@@ -9,8 +9,10 @@
  *
  * 宿主识别:package.json 的 dependencies 含 wujie。
  * 端口提示:提取 vite.config.ts 中 server.port 字面量(与 stop.mjs 相同规则)。
+ * 端口预检:启动前检测选中应用的端口占用,被占用时先执行 stop.mjs 清理本仓库残留进程。
+ * 启动顺序:先启动子应用,待其配置端口就绪后再启动宿主(避免宿主先于子应用就绪)。
  */
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +46,37 @@ function discoverApps() {
     apps.push({ name: entry.name, port, host: Boolean(pkg.dependencies?.wujie) });
   }
   return apps;
+}
+
+/** 查询端口上的监听进程 pid 集合(ss -tlnp,仅 Linux;与 stop.mjs 相同规则) */
+function listenerPids(port) {
+  const out = spawnSync("ss", ["-tlnp", "sport", "=", `:${port}`], { encoding: "utf8" });
+  if (out.status !== 0) return [];
+  const pids = new Set();
+  for (const match of out.stdout.matchAll(/pid=(\d+)/g)) pids.add(Number(match[1]));
+  return [...pids];
+}
+
+/** 启动前端口预检:被占用时先执行 stop.mjs 清理本仓库残留进程,复查仍占用则告警 */
+function ensurePortsFree(targets) {
+  const withPort = targets.filter((a) => a.port != null);
+  const occupied = withPort.filter((a) => listenerPids(a.port).length > 0);
+  if (occupied.length === 0) return;
+  console.log(
+    `[dev] 端口已被占用(${occupied.map((a) => `${a.name}:${a.port}`).join("、")}),先执行 stop.mjs 清理...`,
+  );
+  const res = spawnSync(process.execPath, [join(repoRoot, "scripts", "stop.mjs")], {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+  if (res.status !== 0) {
+    console.warn(`[dev] stop.mjs 异常退出(${res.signal ?? `code ${res.status}`}),继续启动`);
+  }
+  for (const a of withPort) {
+    if (listenerPids(a.port).length > 0) {
+      console.warn(`[dev] 端口 ${a.port}(${a.name})仍被占用,可能为仓库外进程,启动后可能冲突`);
+    }
+  }
 }
 
 const apps = discoverApps();
@@ -132,6 +165,9 @@ if (targets.length === 0) {
   process.exit(0);
 }
 
+// ---------- 端口占用预检 ----------
+ensurePortsFree(targets);
+
 // ---------- 进程托管 ----------
 const colors = ["\x1b[36m", "\x1b[35m", "\x1b[33m", "\x1b[32m", "\x1b[34m"];
 const reset = "\x1b[0m";
@@ -189,9 +225,8 @@ function terminateAll() {
 process.on("SIGINT", terminateAll);
 process.on("SIGTERM", terminateAll);
 
-console.log(`[dev] 启动 ${targets.length} 个应用:${targets.map((a) => a.name).join("、")}`);
-for (const [i, app] of targets.entries()) {
-  const prefix = `${colors[i % colors.length]}${app.name.padEnd(width)}${reset}`;
+function launchApp(app, colorIndex) {
+  const prefix = `${colors[colorIndex % colors.length]}${app.name.padEnd(width)}${reset}`;
   // detached:独立进程组,便于整组终止(vp run -> vp dev -> vite 进程树)
   const proc = spawn("vp", ["run", `${app.name}#dev`], {
     cwd: repoRoot,
@@ -212,4 +247,42 @@ for (const [i, app] of targets.entries()) {
     console.log(`[dev] ${app.name} 已退出(${signal ?? `code ${code}`})`);
     if (children.size === 0 && !shuttingDown) process.exit(lastExitCode);
   });
+}
+
+/** 等待子应用配置端口就绪(轮询 ss,复用预检规则),超时则告警并继续 */
+async function waitSubAppsReady(subs, timeoutMs = 30000) {
+  const withPort = subs.filter((a) => a.port != null);
+  if (withPort.length === 0) return;
+  const pending = new Map(withPort.map((a) => [a.name, a]));
+  const deadline = Date.now() + timeoutMs;
+  while (pending.size > 0 && Date.now() < deadline) {
+    for (const [name, a] of pending) {
+      const proc = children.get(name);
+      if ((proc && proc.exitCode !== null) || listenerPids(a.port).length > 0) {
+        pending.delete(name); // 端口就绪,或进程已退出(不再等待)
+      }
+    }
+    if (pending.size > 0) await new Promise((r) => setTimeout(r, 300));
+  }
+  if (pending.size > 0) {
+    console.warn(`[dev] 等待子应用就绪超时(${[...pending.keys()].join("、")}),仍启动宿主`);
+  } else {
+    console.log("[dev] 子应用端口就绪,启动宿主");
+  }
+}
+
+const subTargets = targets.filter((a) => !a.host);
+const hostTargets = targets.filter((a) => a.host);
+
+console.log(
+  `[dev] 启动 ${subTargets.length} 个子应用:${subTargets.map((a) => a.name).join("、") || "无"}`,
+);
+for (const app of subTargets) launchApp(app, targets.indexOf(app));
+
+if (hostTargets.length > 0) {
+  await waitSubAppsReady(subTargets);
+  for (const app of hostTargets) {
+    console.log(`[dev] 启动宿主 ${app.name}`);
+    launchApp(app, targets.indexOf(app));
+  }
 }

@@ -5,8 +5,8 @@
  * 自动发现 apps/<name>/vite.config.ts 中 server.port 的端口并终止监听进程,
  * 新增子应用无需登记(端口需写为字面量,不支持变量/环境变量拼装)。
  *
- * 安全护栏:仅终止工作目录位于本仓库内的进程(Linux /proc/<pid>/cwd),
- * 端口被无关进程占用时跳过并告警。仅支持 Linux。
+ * 安全护栏:仅终止本仓库进程与工作目录已删除的孤儿进程(Linux /proc/<pid>/cwd),
+ * 端口被其他在用目录的无关进程占用时跳过并告警。仅支持 Linux。
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
@@ -48,13 +48,26 @@ function listenerPids(port) {
   return [...pids];
 }
 
+/** 进程工作目录(内核对已删除目录会在 readlink 结果后追加 " (deleted)") */
+function procCwd(pid) {
+  try {
+    return readlinkSync(`/proc/${pid}/cwd`).replace(/ \(deleted\)$/, "");
+  } catch {
+    return null; // 进程已退出或无权限
+  }
+}
+
 /** 进程工作目录是否在本仓库内(防止误杀无关进程) */
 function belongsToRepo(pid) {
-  try {
-    return readlinkSync(`/proc/${pid}/cwd`).startsWith(repoRoot);
-  } catch {
-    return false; // 进程已退出或无权限
-  }
+  const cwd = procCwd(pid);
+  // cwd 恰为仓库根时无尾部斜杠,补 "/" 后再前缀比较
+  return cwd != null && `${cwd}/`.startsWith(repoRoot);
+}
+
+/** 孤儿进程:工作目录已不存在(如已删除 worktree 的残留 dev server) */
+function isStaleOrphan(pid) {
+  const cwd = procCwd(pid);
+  return cwd != null && !existsSync(cwd);
 }
 
 function isAlive(pid) {
@@ -78,11 +91,15 @@ async function main() {
   const targets = [];
   for (const { port, name } of ports) {
     for (const pid of listenerPids(port)) {
-      if (!belongsToRepo(pid)) {
-        console.warn(`[stop] 跳过 ${name}:${port}(pid ${pid},不属于本仓库进程)`);
+      if (belongsToRepo(pid)) {
+        targets.push({ pid, name, port, reason: "本仓库进程" });
         continue;
       }
-      targets.push({ pid, name, port });
+      if (isStaleOrphan(pid)) {
+        targets.push({ pid, name, port, reason: "孤儿进程(工作目录已删除)" });
+        continue;
+      }
+      console.warn(`[stop] 跳过 ${name}:${port}(pid ${pid},不属于本仓库进程)`);
     }
   }
 
@@ -99,7 +116,7 @@ async function main() {
   }
   for (const target of targets) {
     if (isAlive(target.pid)) process.kill(target.pid, "SIGKILL");
-    console.log(`[stop] 已停止 ${target.name}:${target.port}(pid ${target.pid})`);
+    console.log(`[stop] 已停止 ${target.name}:${target.port}(pid ${target.pid},${target.reason})`);
   }
 }
 
