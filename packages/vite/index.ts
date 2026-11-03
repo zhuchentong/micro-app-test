@@ -33,6 +33,7 @@ const SHARED_DEPS: Record<string, string> = {
 /**
  * 读取本包依赖树内共享依赖的解析后版本(与 build-shared.mjs 同源,均为 catalog 锁定版本)。
  * 读取失败返回 undefined,调用方跳过版本比对注入,不阻塞构建。
+ * @returns 全局命名空间 → 实际版本 的映射(vue/pinia/vue-router);任一依赖解析失败时为 undefined
  */
 function readSharedVersions(): Record<string, string> | undefined {
   try {
@@ -57,6 +58,7 @@ function readSharedVersions(): Record<string, string> | undefined {
  * 生产构建将共享依赖 external 到 window.__MICRO_SHARED__。
  * 机制:插件为命名 external 生成 CJS shim stash(module.exports = window.__MICRO_SHARED__.<ns>)
  * 并内联进产物,由 rolldown 互操作解析 named imports。apply 限定 build:dev 保持 Vite 预打包。
+ * @returns external 化共享依赖的 vite 插件(仅生产构建生效)
  */
 function sharedExternalsPlugin(): Plugin {
   return external({
@@ -70,6 +72,7 @@ function sharedExternalsPlugin(): Plugin {
 /**
  * dev(serve)阶段从 index.html 剥离 shared-deps 引用:public/libs 产物仅生产构建生成,
  * 避免开发时 404 噪音;build 保留(host 同步加载 / 子应用 <script ignore> 由 wujie 跳过)。
+ * @returns 按 dev/build 阶段剥离或保留 shared-deps 脚本引用的 vite 插件
  */
 function sharedDepsHtmlPlugin(): Plugin {
   const tagPattern = /[ \t]*<script src="[^"]*generated\/shared-deps\.js"[^>]*><\/script>\r?\n?/g;
@@ -96,6 +99,8 @@ function sharedDepsHtmlPlugin(): Plugin {
  *   本配置,真实 vite dev/build/test 进程的 cwd 才是 app root。
  * 因此:app root 用 cwd 是否位于 <root>/apps/ 下判定;pre-pass(cwd=仓库根)
  * 跳过生成物写入与插件装配,避免错误路径污染与误告警。
+ * @param options app 侧声明的差异项(server 端口、追加插件等,全部可缺省)
+ * @returns 可从 app 侧 vite.config.ts 直接导出的 vite 配置(pre-pass 下为精简配置)
  */
 export function defineAppConfig(options: AppOptions = {}) {
   const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");

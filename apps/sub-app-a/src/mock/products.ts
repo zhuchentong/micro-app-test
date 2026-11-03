@@ -15,6 +15,11 @@ export const products: Product[] = [
   { id: "106", name: "智能灯带 Vision", price: 159, desc: "1600 万色,场景联动,音乐律动" },
 ];
 
+/**
+ * 按 id 查找产品
+ * @param id 产品 id
+ * @returns 命中的产品,未命中返回 undefined
+ */
 export function findProduct(id: string): Product | undefined {
   return products.find((item) => item.id === id);
 }

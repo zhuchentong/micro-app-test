@@ -27,6 +27,10 @@ const themeStore = useThemeStore(pinia);
 
 // 自定义 token 覆盖持久化(host 权威源:恢复与写入都在 host 侧,子应用零改动)
 const CUSTOM_STORAGE_KEY = "wujie-mvp:theme-custom:v1";
+/**
+ * 读取自定义 token 覆盖(localStorage);JSON 损坏 / 非对象 / 值非字符串一律剔除
+ * @returns 合法的自定义 token 表(无有效数据时为空对象)
+ */
 function loadCustom(): Record<string, string> {
   try {
     const parsed = JSON.parse(localStorage.getItem(CUSTOM_STORAGE_KEY) ?? "null") as unknown;
@@ -42,6 +46,10 @@ function loadCustom(): Record<string, string> {
 }
 themeStore.setCustom(loadCustom());
 
+/**
+ * 把当前主题模式 + 自定义 token 写入根元素 CSS 变量(host 是唯一写入方)
+ * @returns 无返回值(仅产生 CSS 变量写入副作用)
+ */
 const applyCurrentTheme = (): void =>
   applyTheme(document.documentElement, toThemeMode(themeStore.theme), themeStore.custom);
 applyCurrentTheme();

@@ -21,7 +21,10 @@ import * as p from "@clack/prompts";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const appsDir = join(repoRoot, "apps");
 
-/** 发现 apps/* 下含 dev script 的应用,返回 { name, port, host } 列表(按名排序) */
+/**
+ * 发现 apps/* 下含 dev script 的应用(按名排序)
+ * @returns 应用清单列表:名称、配置端口(无 vite.config.ts 时为空)与是否宿主
+ */
 function discoverApps() {
   const apps = [];
   const entries = readdirSync(appsDir, { withFileTypes: true })
@@ -48,7 +51,11 @@ function discoverApps() {
   return apps;
 }
 
-/** 查询端口上的监听进程 pid 集合(ss -tlnp,仅 Linux;与 stop.mjs 相同规则) */
+/**
+ * 查询端口上的监听进程 pid 集合(ss -tlnp,仅 Linux;与 stop.mjs 相同规则)
+ * @param port 端口号
+ * @returns 占用该端口的 pid 数组(端口空闲或 ss 不可用时为空)
+ */
 function listenerPids(port) {
   const out = spawnSync("ss", ["-tlnp", "sport", "=", `:${port}`], { encoding: "utf8" });
   if (out.status !== 0) return [];
@@ -57,7 +64,10 @@ function listenerPids(port) {
   return [...pids];
 }
 
-/** 启动前端口预检:被占用时先执行 stop.mjs 清理本仓库残留进程,复查仍占用则告警 */
+/**
+ * 启动前端口预检:被占用时先执行 stop.mjs 清理本仓库残留进程,复查仍占用则告警
+ * @param targets 待启动的应用清单(仅含配置端口者参与检查)
+ */
 function ensurePortsFree(targets) {
   const withPort = targets.filter((a) => a.port != null);
   const occupied = withPort.filter((a) => listenerPids(a.port).length > 0);
@@ -90,8 +100,9 @@ const knownNames = new Set(apps.map((a) => a.name));
 
 /**
  * 子序列模糊匹配:search 中的字符按序(可不连续)出现在 text 中即命中,大小写不敏感。
- * @param {string} search
- * @param {string} text
+ * @param search 待匹配的关键字序列
+ * @param text 被匹配的目标文本(应用名等)
+ * @returns 是否命中(空关键字恒命中)
  */
 function fuzzyMatch(search, text) {
   if (!search) return true;
@@ -176,6 +187,11 @@ const children = new Map();
 let shuttingDown = false;
 let lastExitCode = 0;
 
+/**
+ * 将子进程输出流按行转发到 stdout,逐行附加应用名前缀(缓冲半行防串行)
+ * @param stream 子进程可读流(stdout/stderr)
+ * @param prefix 行前缀(含着色的应用名)
+ */
 function pipeWithPrefix(stream, prefix) {
   let buf = "";
   stream.setEncoding("utf8");
@@ -193,6 +209,7 @@ function pipeWithPrefix(stream, prefix) {
   });
 }
 
+/** 终止全部子应用进程;幂等(shuttingDown 防重入),并复位终端光标 */
 function terminateAll() {
   if (shuttingDown) return;
   shuttingDown = true;
@@ -225,6 +242,11 @@ function terminateAll() {
 process.on("SIGINT", terminateAll);
 process.on("SIGTERM", terminateAll);
 
+/**
+ * 启动单个应用 dev 服务并转发日志(带应用名前缀着色输出)
+ * @param app 应用清单项(name 与 dev 命令)
+ * @param colorIndex 前缀颜色序号(按序循环取色,区分不同应用日志)
+ */
 function launchApp(app, colorIndex) {
   const prefix = `${colors[colorIndex % colors.length]}${app.name.padEnd(width)}${reset}`;
   // detached:独立进程组,便于整组终止(vp run -> vp dev -> vite 进程树)
@@ -249,7 +271,11 @@ function launchApp(app, colorIndex) {
   });
 }
 
-/** 等待子应用配置端口就绪(轮询 ss,复用预检规则),超时则告警并继续 */
+/**
+ * 等待子应用配置端口就绪(轮询 ss,复用预检规则),超时则告警并继续
+ * @param subs 子应用清单项列表(含 port 配置者才参与等待)
+ * @param timeoutMs 就绪超时上限(默认 30s),超时后告警但不中断启动流程
+ */
 async function waitSubAppsReady(subs, timeoutMs = 30000) {
   const withPort = subs.filter((a) => a.port != null);
   if (withPort.length === 0) return;

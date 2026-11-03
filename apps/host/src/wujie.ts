@@ -55,7 +55,11 @@ export function initWujie(pinia: Pinia, bus: unknown): void {
 
   configureTabOps(
     {
-      /** cold → 实例化:一 Tab 一实例(alive 保活 + sync:false,路由由主应用自管) */
+      /**
+       * cold → 实例化:一 Tab 一实例(alive 保活 + sync:false,路由由主应用自管)
+       * @param tab 目标 Tab 记录(定位实例名与挂载容器)
+       * @param onFailed 启动失败回调(含异步失败,store 借此回滚 cold)
+       */
       ensureInstance(tab, onFailed) {
         const name = tabInstanceName(tab.app, tab.id);
         if (startedInstances.has(name)) return; // 幂等:重复 activate/双击不重复 start
@@ -83,7 +87,10 @@ export function initWujie(pinia: Pinia, bus: unknown): void {
           },
         });
       },
-      /** 销毁保活实例(LRU 降级 / 关闭 Tab);先同步失效判据,避免销毁窗口内重开被挡住 */
+      /**
+       * 销毁保活实例(LRU 降级 / 关闭 Tab);先同步失效判据,避免销毁窗口内重开被挡住
+       * @param tab 待销毁的 Tab 记录(取 app/id 定位实例名)
+       */
       async destroyInstance(tab) {
         const name = tabInstanceName(tab.app, tab.id);
         if (!startedInstances.has(name)) return;

@@ -13,7 +13,10 @@ import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** 从 apps/* 的 vite.config.ts 提取 dev 端口:返回 { name, port } 列表 */
+/**
+ * 从 apps/* 的 vite.config.ts 提取 dev 端口
+ * @returns { name, port } 列表(仅含配置了端口的目录)
+ */
 function discoverPorts() {
   const entries = [];
   for (const entry of readdirSync(appsDir, { withFileTypes: true })) {
@@ -35,7 +38,11 @@ function discoverPorts() {
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const appsDir = join(repoRoot, "apps");
 
-/** 查询端口上的监听进程 pid 集合 */
+/**
+ * 查询端口上的监听进程 pid 集合
+ * @param port 端口号
+ * @returns 占用该端口的 pid 数组(去重;ss 失败时输出错误并返回空)
+ */
 function listenerPids(port) {
   const out = spawnSync("ss", ["-tlnp", "sport", "=", `:${port}`], { encoding: "utf8" });
   if (out.status !== 0) {
@@ -48,7 +55,11 @@ function listenerPids(port) {
   return [...pids];
 }
 
-/** 进程工作目录(内核对已删除目录会在 readlink 结果后追加 " (deleted)") */
+/**
+ * 进程工作目录(内核对已删除目录会在 readlink 结果后追加 " (deleted)")
+ * @param pid 进程 id
+ * @returns 工作目录绝对路径;进程已退出或无权限时为 null
+ */
 function procCwd(pid) {
   try {
     return readlinkSync(`/proc/${pid}/cwd`).replace(/ \(deleted\)$/, "");
@@ -57,19 +68,32 @@ function procCwd(pid) {
   }
 }
 
-/** 进程工作目录是否在本仓库内(防止误杀无关进程) */
+/**
+ * 进程工作目录是否在本仓库内(防止误杀无关进程)
+ * @param pid 进程 id
+ * @returns 工作目录位于仓库根之下时为 true
+ */
 function belongsToRepo(pid) {
   const cwd = procCwd(pid);
   // cwd 恰为仓库根时无尾部斜杠,补 "/" 后再前缀比较
   return cwd != null && `${cwd}/`.startsWith(repoRoot);
 }
 
-/** 孤儿进程:工作目录已不存在(如已删除 worktree 的残留 dev server) */
+/**
+ * 孤儿进程判定:工作目录已不存在(如已删除 worktree 的残留 dev server)
+ * @param pid 进程 id
+ * @returns cwd 可读但目录已不存在时为 true
+ */
 function isStaleOrphan(pid) {
   const cwd = procCwd(pid);
   return cwd != null && !existsSync(cwd);
 }
 
+/**
+ * 进程是否存活(kill 0 探测,不发信号)
+ * @param pid 进程 id
+ * @returns 探测成功为 true;进程不存在或无权限为 false
+ */
 function isAlive(pid) {
   try {
     process.kill(pid, 0);
@@ -79,8 +103,14 @@ function isAlive(pid) {
   }
 }
 
+/**
+ * 睡眠等待(用于 SIGTERM 后宽限再 SIGKILL)
+ * @param ms 等待毫秒数
+ * @returns 到期 resolve 的 Promise
+ */
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/** 停服入口:逐端口终止残留进程(仅限本仓库与孤儿),打印清理摘要 */
 async function main() {
   const ports = discoverPorts();
   if (ports.length === 0) {

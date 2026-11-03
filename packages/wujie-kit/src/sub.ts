@@ -11,12 +11,18 @@ import type {
 } from "./events";
 import type { HostProps, SubAppConfig } from "./types";
 
-/** 是否运行在 wujie 环境中 */
+/**
+ * 是否运行在 wujie 环境中
+ * @returns 嵌入主应用运行时 true;独立直访(未经过 wujie 注入)时 false
+ */
 export function isWujie(): boolean {
   return Boolean(window.__POWERED_BY_WUJIE__);
 }
 
-/** 主应用注入的 props(wujie 环境外为 undefined);默认推断为契约类型 HostProps,注入额外字段时用泛型扩展 */
+/**
+ * 主应用注入的 props(wujie 环境外为 undefined);默认推断为契约类型 HostProps,注入额外字段时用泛型扩展
+ * @returns 注入的 props 对象;非 wujie 环境(含 node 测试环境)返回 undefined
+ */
 export function useHostProps<T = HostProps>(): T | undefined {
   // 守卫 typeof window:node 测试环境无 window,直接引用会 ReferenceError
   return typeof window !== "undefined" ? (window.$wujie?.props as T | undefined) : undefined;
@@ -42,7 +48,10 @@ export interface SubBus {
   reportMenu(menu: MenuEntry[]): void;
 }
 
-/** 读取注入的 Tab 身份(props 在 startApp 时一次性注入,动态读取避免时序差异) */
+/**
+ * 读取注入的 Tab 身份(props 在 startApp 时一次性注入,动态读取避免时序差异)
+ * @returns 当前 Tab 身份;非 wujie 环境或未注入 tab 时返回 null
+ */
 function currentTab(): NonNullable<HostProps["tab"]> | null {
   const props =
     typeof window !== "undefined" ? (window.$wujie?.props as HostProps | undefined) : undefined;
@@ -52,7 +61,11 @@ function currentTab(): NonNullable<HostProps["tab"]> | null {
 /** vue-router 的 query 值形态(结构化匹配,避免本包依赖 vue-router) */
 type RouteQuery = Record<string, string | (string | null)[] | null> | undefined;
 
-/** Tab 内 query 上报前的规整(仅保留字符串值,多值 query 取最近一次) */
+/**
+ * Tab 内 query 上报前的规整(仅保留字符串值,多值 query 取最近一次)
+ * @param query vue-router 形态的 query(值可为字符串数组或 null)
+ * @returns 规整后的纯字符串映射;入参为空或规整后无条目时返回 undefined
+ */
 function normalizeQuery(query: RouteQuery): Record<string, string> | undefined {
   if (!query) return undefined;
   const entries = Object.entries(query).map(([key, value]): [string, string] => [
@@ -66,6 +79,8 @@ function normalizeQuery(query: RouteQuery): Record<string, string> | undefined {
  * 创建子应用 bus 能力。
  * 注意:请在应用内以组合根方式调用一次(如 src/bus.ts)并共享该实例,
  * 避免多个实例各自维护 lastBroadcast / 重复注册监听。
+ * @param config 子应用配置(至少提供 name 作为消息来源标识)
+ * @returns SubBus 能力集合(含响应式 lastBroadcast 与各事件发送方法)
  */
 export function createSubBus(config: SubAppConfig): SubBus {
   const lastBroadcast = ref("");
@@ -125,6 +140,8 @@ export function createSubBus(config: SubAppConfig): SubBus {
  * - 单例/重建模式(alive 缺省):切走会调 __WUJIE_UNMOUNT 并清空 shadow DOM,
  *   Vue 3 app 实例 unmount 后不可 remount("App has already been mounted"),
  *   因此 UNMOUNT 必须置空实例,MOUNT 每次创建新实例。
+ * @param create   创建 Vue 应用实例的工厂(MOUNT 时调用;重建模式下每次新建)
+ * @param selector 挂载目标选择器,默认 "#app"
  */
 export function mountWujieApp(create: () => VueApp, selector = "#app"): void {
   if (window.__POWERED_BY_WUJIE__ && window.__WUJIE) {

@@ -10,14 +10,21 @@ import { apps } from "../apps";
 export const useMenuStore = defineStore("menu", {
   state: () => ({ reported: {} as Record<string, MenuEntry[]> }),
   getters: {
-    /** 指定子应用的菜单:上报覆盖兜底,未注册 app 返回空(不渲染) */
+    /**
+     * 指定子应用的菜单:上报覆盖兜底,未注册 app 返回空(不渲染)
+     * @param state getter 注入的 store 状态
+     * @returns 菜单选择器:传入 appKey 返回其菜单项(上报优先,注册表兜底,均无则空数组)
+     */
     menuFor(state) {
       return (appKey: string): MenuEntry[] =>
         state.reported[appKey] ?? apps.find((app) => app.key === appKey)?.menu ?? [];
     },
   },
   actions: {
-    /** 子应用 sub:menu 入口(带注册表校验) */
+    /**
+     * 子应用 sub:menu 入口(带注册表校验)
+     * @param payload 子应用上报的菜单载荷(app 须已注册)
+     */
     applyReport(payload: MenuReportPayload): void {
       if (!apps.some((app) => app.key === payload.app)) {
         console.error(`[menu] 未注册的子应用菜单上报: ${payload.app}`);

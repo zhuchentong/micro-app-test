@@ -13,7 +13,10 @@ export const useThemeStore = defineStore("theme", {
     setTheme(theme: string): void {
       this.theme = theme;
     },
-    /** 整体替换自定义覆盖(传空对象即清除,applyTheme 回落内置 preset) */
+    /**
+     * 整体替换自定义覆盖(传空对象即清除,applyTheme 回落内置 preset)
+     * @param custom --app-* 变量名 → 值 的覆盖映射(整体替换并浅拷贝,不与调用方共享引用)
+     */
     setCustom(custom: Record<string, string>): void {
       this.custom = { ...custom };
     },

@@ -45,6 +45,11 @@ try {
 
 // ③ 相对导入改写:registry 产出 `@/X`(aliasRoot=src,两层 components/ui/<name>/ 同构)
 //    → `@/lib/utils` = `../../../lib/utils`;`@/components/ui/X` = `../X`
+/**
+ * 递归枚举目录下的源码文件(.vue/.ts)
+ * @param dir 起始目录(绝对路径)
+ * @returns 文件绝对路径数组(跳过非源码文件)
+ */
 const walk = (dir) =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     const p = join(dir, e.name);

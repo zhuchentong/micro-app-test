@@ -32,6 +32,7 @@ export interface ParsedLocation {
  * @deprecated 单容器 sync 模式遗留;多 Tab 模式地址栏由主应用自管,请用 parseTabUrl
  * @param search location.search
  * @param apps   主应用注册表
+ * @returns 命中注册表时返回 app 与 path,未命中返回空对象
  */
 export function parseLocation(search: string, apps: MicroApp[]): ParsedLocation {
   const params = new URLSearchParams(search);
@@ -59,8 +60,12 @@ export interface StarterOptions {
   onStarted?: (app: MicroApp, url: string) => void;
 }
 
-/** 创建主应用的子应用启动器(sync 路由由 wujie 内部处理)。
- * 注:共享依赖 jsBeforeLoaders 注入仅在多 Tab 模式(startTabApp)接入;本单容器遗留路径未透传 */
+/**
+ * 创建主应用的子应用启动器(sync 路由由 wujie 内部处理)。
+ * 注:共享依赖 jsBeforeLoaders 注入仅在多 Tab 模式(startTabApp)接入;本单容器遗留路径未透传
+ * @param options 启动器配置(注入的 startApp、注册表、props 提供器与回调)
+ * @returns 启动函数(key + 可选 path);key 未注册时仅打印错误,不做其他操作
+ */
 export function createMicroAppStarter(
   options: StarterOptions,
 ): (key: string, path?: string) => void {
@@ -107,7 +112,11 @@ export interface ParsedTabUrl {
   query?: Record<string, string>;
 }
 
-/** 解析 Tab URL 中的 query:跳过 token,数组取首值 */
+/**
+ * 解析 Tab URL 中的 query:跳过 token,重复 key 保留首个出现的值
+ * @param search 待解析的 query 串(来自 URL 的 search)
+ * @returns key→value 映射;无有效参数时返回空对象
+ */
 function parseQueryParams(search: string): Record<string, string> {
   const query: Record<string, string> = {};
   for (const [key, value] of new URLSearchParams(search)) {
@@ -121,6 +130,11 @@ function parseQueryParams(search: string): Record<string, string> {
  * 确定性生成 tabId(去重键):`app|page|排序后的 query`。
  * 同参数必然同 id —— 子应用重复 emit tabOpen 自然幂等,无需回执。
  * token 参数不参与(与 parseLocation 契约一致)。
+ *
+ * @param app   子应用注册键
+ * @param page  Tab 内页面路径(如 "/product/1")
+ * @param query 页面 query;token 不参与生成
+ * @returns 确定性 tabId,同参数恒同值
  */
 export function buildTabKey(app: string, page: string, query?: Record<string, string>): string {
   const qs = Object.entries(query ?? {})
@@ -137,6 +151,7 @@ export function buildTabKey(app: string, page: string, query?: Record<string, st
  *
  * @param url  完整地址(协议可缺省,便于传 pathname+search)
  * @param apps 主应用注册表
+ * @returns 命中注册表时返回 app/page/query(query 为空则省略字段),未命中返回空对象
  */
 export function parseTabUrl(url: string, apps: MicroApp[]): ParsedTabUrl {
   const parsed = new URL(url, "http://wujie.invalid");
@@ -151,7 +166,13 @@ export function parseTabUrl(url: string, apps: MicroApp[]): ParsedTabUrl {
   };
 }
 
-/** 拼接子应用 url(与 buildTabKey 的 query 语义一致) */
+/**
+ * 拼接子应用 url(与 buildTabKey 的 query 语义一致)
+ * @param domain 子应用 domain(如 "//demo.example.com")
+ * @param page   Tab 内页面路径
+ * @param query  附加 query;为空时省略 query 串
+ * @returns 可直接交给 startApp 的完整 url
+ */
 export function buildTabUrl(domain: string, page: string, query?: Record<string, string>): string {
   const qs = new URLSearchParams(query).toString();
   if (!qs) return `${domain}${page}`;
@@ -168,7 +189,11 @@ export interface TabDescriptor {
   el: string;
 }
 
-/** tabId → 合法实例 name 后缀(FNV-1a 32 位,确定性且不含 wujie name 非法的字符) */
+/**
+ * tabId → 合法实例 name 后缀(FNV-1a 32 位,确定性且不含 wujie name 非法的字符)
+ * @param id Tab 唯一标识(buildTabKey 产物)
+ * @returns 36 进制字符串形式的无符号哈希
+ */
 function tabNameSuffix(id: string): string {
   let hash = 0x811c9dc5;
   for (let i = 0; i < id.length; i++) {
@@ -178,7 +203,12 @@ function tabNameSuffix(id: string): string {
   return (hash >>> 0).toString(36);
 }
 
-/** Tab 实例 name(全局唯一;startTabApp 与 host 销毁/查重共用同一映射) */
+/**
+ * Tab 实例 name(全局唯一;startTabApp 与 host 销毁/查重共用同一映射)
+ * @param app 子应用注册键
+ * @param id  Tab 唯一标识
+ * @returns `{app}-tab-{id 哈希}` 形式的实例 name
+ */
 export function tabInstanceName(app: string, id: string): string {
   return `${app}-tab-${tabNameSuffix(id)}`;
 }
@@ -202,6 +232,7 @@ export interface TabAppOptions {
 /**
  * 按 Tab 启动一个 wujie 实例:name 全局唯一(app-tab-{id 尾段}),sync 关闭,alive 保活。
  * 同 page 不同参数 → 不同 tabId → 不同实例,天然隔离(官方 Issue #391/#516 约束)。
+ * @param options 启动入参(注入的 startApp、注册表、业务快照与 Tab 描述符)
  */
 export function startTabApp(options: TabAppOptions): void {
   const {

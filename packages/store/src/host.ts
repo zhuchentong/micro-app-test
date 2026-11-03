@@ -19,7 +19,11 @@ export interface HostStoreSync {
 /** 快照序号:单调递增,子应用据此丢弃过期/乱序事件 */
 let rev = 0;
 
-/** 创建 host 侧 store 同步:store 变更经 bus 广播给子应用(创建时不自动发快照) */
+/**
+ * 创建 host 侧 store 同步:store 变更经 bus 广播给子应用(创建时不自动发快照)。
+ * @param options pinia 实例与同步 bus(共享 store 的变更源与广播通道)
+ * @returns 同步器句柄:emitSnapshot 手动补发快照,stop 停止自动广播并解除握手监听
+ */
 export function createHostStoreSync(options: { pinia: Pinia; bus: SyncBus }): HostStoreSync {
   const { bus } = options;
   const theme = useThemeStore(options.pinia);

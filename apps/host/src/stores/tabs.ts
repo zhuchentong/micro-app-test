@@ -40,12 +40,19 @@ export interface TabOps {
 let ops: TabOps | null = null;
 let registry: HostApp[] = [];
 
-/** @internal 由 wujie.ts 在 initWujie 时注入副作用实现(注册表同步保存,校验不依赖 init 时序) */
+/**
+ * 由 wujie.ts 在 initWujie 时注入副作用实现(注册表同步保存,校验不依赖 init 时序)
+ * @internal
+ */
 export function configureTabOps(next: TabOps, apps?: HostApp[]): void {
   ops = next;
   if (apps) registry = apps;
 }
 
+/**
+ * 取已注入的宿主副作用实现(未初始化属调用时序错误,直接抛错暴露)
+ * @returns TabOps 副作用实现
+ */
 function assertOps(): TabOps {
   if (!ops) throw new Error("[tabs] 尚未 configureTabOps,请先调用 initWujie");
   return ops;
@@ -64,6 +71,9 @@ const pendingEnsure = new Map<string, Promise<boolean>>();
 /**
  * cold → 实例化。只等到"启动指令已发出",不等待子应用加载完成(不阻塞切 Tab);
  * 同步启动失败时返回 false 并由 onFailed 回滚为 cold,允许用户再次点击重试。
+ * @param store tabs store 状态(判据:记录仍在列表才执行创建/回滚)
+ * @param tab 待实例化的 Tab 记录(id 为在途去重键)
+ * @returns 启动指令是否成功发出(不含子应用加载完成;同步失败为 false)
  */
 function ensureForActivate(store: TabsState, tab: TabRecord): Promise<boolean> {
   const existing = pendingEnsure.get(tab.id);
@@ -95,6 +105,10 @@ function ensureForActivate(store: TabsState, tab: TabRecord): Promise<boolean> {
   return task;
 }
 
+/**
+ * 从 sessionStorage 读取并校验快照;字段缺失/损坏一律视为无历史(不抛出)
+ * @returns 合法快照(记录统一落回 cold),无快照或解析失败时返回 null
+ */
 function loadSnapshot(): TabsSnapshot | null {
   try {
     const raw = sessionStorage.getItem(TABS_STORAGE_KEY);
@@ -121,6 +135,12 @@ function loadSnapshot(): TabsSnapshot | null {
   }
 }
 
+/**
+ * Tab 未回报标题时的兜底:注册菜单命中取菜单名,否则取路径末段首字母大写
+ * @param app 子应用 key
+ * @param page 页面路径
+ * @returns 兜底标题(真实名由子应用 tabTitle 回报后覆盖)
+ */
 function defaultTitle(app: string, page: string): string {
   const entry = registry.find((item) => item.key === app)?.menu.find((menu) => menu.path === page);
   if (entry) return entry.label;
@@ -129,6 +149,11 @@ function defaultTitle(app: string, page: string): string {
   return segment.charAt(0).toUpperCase() + segment.slice(1);
 }
 
+/**
+ * 拼 Tab 的地址栏路径:/app[/page] + query(page 自带 ? 时用 & 续接)
+ * @param tab 目标 Tab 记录
+ * @returns 用于 history.replaceState 的 URL
+ */
 function mainPath(tab: TabRecord): string {
   const query = Object.entries(tab.query ?? {});
   const qs = new URLSearchParams(query).toString();
@@ -148,14 +173,21 @@ export const useTabsStore = defineStore("tabs", {
     activeTab(state): TabRecord | undefined {
       return state.tabs.find((tab) => tab.id === state.activeId);
     },
-    /** 有保活实例的 Tab 数(active + background) */
+    /**
+     * 有保活实例的 Tab 数(active + background)
+     * @param state getter 注入的 store 状态
+     * @returns 非 cold 状态的 Tab 数量
+     */
     aliveCount(state): number {
       return state.tabs.filter((tab) => tab.state !== "cold").length;
     },
   },
 
   actions: {
-    /** 应用启动:sessionStorage 恢复列表 + 地址栏解析激活 Tab;激活即按需重建实例 */
+    /**
+     * 应用启动:sessionStorage 恢复列表 + 地址栏解析激活 Tab;激活即按需重建实例
+     * @param apps 宿主应用注册表(同步保存,供 defaultTitle 兜底查名)
+     */
     async init(apps: HostApp[]): Promise<void> {
       registry = apps;
       const saved = loadSnapshot();
@@ -190,7 +222,13 @@ export const useTabsStore = defineStore("tabs", {
       if (this.activeId) await this.activate(this.activeId);
     },
 
-    /** 打开/激活 Tab:确定性去重(同参数复用),cold 先建实例 */
+    /**
+     * 打开/激活 Tab:确定性去重(同参数复用),cold 先建实例
+     * @param app 子应用 key(未注册则报错并忽略)
+     * @param page 页面路径
+     * @param query 路由查询参数(参与去重键)
+     * @param title 可选标题,缺省走 defaultTitle 兜底
+     */
     async openTab(
       app: string,
       page: string,
@@ -219,12 +257,19 @@ export const useTabsStore = defineStore("tabs", {
       await this.activate(id);
     },
 
-    /** 子应用 tabOpen 事件入口(带注册表校验) */
+    /**
+     * 子应用 tabOpen 事件入口(带注册表校验)
+     * @param payload 子应用上报的开 Tab 载荷
+     * @returns 转发给 openTab 的激活 promise
+     */
     openFromPayload(payload: TabOpenPayload): Promise<void> {
       return this.openTab(payload.app, payload.page, payload.query);
     },
 
-    /** 激活 Tab:实例按需重建、地址栏与 sessionStorage 同步、超限触发 LRU 降级 */
+    /**
+     * 激活 Tab:实例按需重建、地址栏与 sessionStorage 同步、超限触发 LRU 降级
+     * @param id 目标 Tab 的确定性去重键
+     */
     async activate(id: string): Promise<void> {
       const tab = this.tabs.find((item) => item.id === id);
       if (!tab) {
@@ -261,7 +306,10 @@ export const useTabsStore = defineStore("tabs", {
       if (created) this.trim();
     },
 
-    /** 关闭 Tab:先同步移除记录再异步销毁;激活 Tab 被关则激活相邻(左优先) */
+    /**
+     * 关闭 Tab:先同步移除记录再异步销毁;激活 Tab 被关则激活相邻(左优先)
+     * @param id 要关闭的 Tab id
+     */
     async closeTab(id: string): Promise<void> {
       const index = this.tabs.findIndex((item) => item.id === id);
       if (index < 0) return;
@@ -286,7 +334,10 @@ export const useTabsStore = defineStore("tabs", {
       this.persist();
     },
 
-    /** 子应用 tabRoute:更新 Tab 记录(身份不变),激活 Tab 同步地址栏 */
+    /**
+     * 子应用 tabRoute:更新 Tab 记录(身份不变),激活 Tab 同步地址栏
+     * @param payload 子应用上报的路由变更载荷
+     */
     applyTabRoute(payload: TabRoutePayload): void {
       const tab = this.tabs.find((item) => item.id === payload.id);
       if (!tab) return; // 实例晚于 Tab 注销的迟到事件
@@ -298,7 +349,10 @@ export const useTabsStore = defineStore("tabs", {
       this.persist();
     },
 
-    /** 子应用 tabTitle:host 仅信任回报,document.title 跟随激活 Tab(防多实例互抢) */
+    /**
+     * 子应用 tabTitle:host 仅信任回报,document.title 跟随激活 Tab(防多实例互抢)
+     * @param payload 子应用上报的标题变更载荷
+     */
     applyTabTitle(payload: TabTitlePayload): void {
       const tab = this.tabs.find((item) => item.id === payload.id);
       if (!tab || !payload.title) return;
@@ -331,6 +385,10 @@ export const useTabsStore = defineStore("tabs", {
   },
 });
 
+/**
+ * 销毁保活实例并吞掉异常(销毁失败不阻断关闭 / LRU 主流程)
+ * @param tab 待销毁的 Tab 记录(传副本定位实例,不依赖原记录存活)
+ */
 async function destroyQuietly(tab: TabRecord): Promise<void> {
   try {
     await assertOps().destroyInstance({ ...tab });

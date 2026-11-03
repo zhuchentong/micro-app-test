@@ -29,7 +29,11 @@ const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const hostRoot = join(workspaceRoot, "apps/host");
 const hostRequire = createRequire(join(hostRoot, "package.json"));
 
-/** 解析后实际版本(非 catalog range):优先子路径 package.json,退回主入口上溯 */
+/**
+ * 解析依赖实际安装版本(非 catalog range):优先子路径 package.json,退回主入口上溯
+ * @param name 依赖包名
+ * @returns 实际解析出的 semver 版本号
+ */
 function resolvedVersion(name) {
   let pkgJsonPath;
   try {
@@ -50,6 +54,7 @@ const version = {
  * 自动发现消费方:扫描 apps 目录下各 app 的 index.html,凡引用 shared-deps.js 的
  * app 获得一份副本。index.html 的引用即消费声明(新增子应用加一行 ignore 标签即
  * 自动覆盖;全部未引用时报错,暴露引用与产物的配置漂移)。
+ * @returns 消费方目录列表(目录名与 index.html 路径)
  */
 function discoverTargets() {
   const appsDir = join(workspaceRoot, "apps");

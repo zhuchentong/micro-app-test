@@ -1,5 +1,6 @@
 import { defineVizeLintConfig, flatConfigs } from "oxlint-plugin-vize";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
+import { repoJsdocPlugin, withJsdoc } from "@repo/lint/config";
 
 export default defineConfig({
   staged: {
@@ -22,10 +23,10 @@ export default defineConfig({
       "**/public/libs/**",
     ],
   },
-  lint: {
-    jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
+  lint: withJsdoc({
+    jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }, repoJsdocPlugin],
     options: { typeAware: true, typeCheck: true },
+    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     // @repo/share 分层依赖方向:common ← ui ← components,禁止反向/跨层引用
     overrides: [
       {
@@ -61,7 +62,7 @@ export default defineConfig({
         },
       },
     ],
-  },
+  }),
   run: {
     cache: true,
     tasks: {
@@ -70,14 +71,20 @@ export default defineConfig({
     },
   },
 }).withVue({
-  lint: defineVizeLintConfig(...flatConfigs.recommended, ...flatConfigs.ecosystem, {
-    ignorePatterns: [
-      "dist/**",
-      "node_modules/**",
-      "packages/ui/src/components/ui/**",
-      "**/src/types/generated/**",
-      "**/src/styles/generated/**",
-      "**/public/libs/**",
-    ],
-  }),
+  lint: defineVizeLintConfig(
+    ...flatConfigs.recommended,
+    ...flatConfigs.ecosystem,
+    // jsdoc 片段经 withJsdoc 键级合并:ignorePatterns 保留,plugins/rules/settings 注入,
+    // require-jsdoc 豁免 overrides 追加(.vue/测试见 @repo/lint/config)
+    withJsdoc({
+      ignorePatterns: [
+        "dist/**",
+        "node_modules/**",
+        "packages/ui/src/components/ui/**",
+        "**/src/types/generated/**",
+        "**/src/styles/generated/**",
+        "**/public/libs/**",
+      ],
+    }),
+  ),
 });

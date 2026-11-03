@@ -10,6 +10,7 @@ const hostProps = useHostProps();
 /**
  * 点击产品:Tab 模式经 bus 请求主应用开新 Tab(幂等,同参数复用);
  * 独立运行时直接本页跳转详情。
+ * @param id 产品 id
  */
 function openProduct(id: string): void {
   const page = `/product/${id}`;

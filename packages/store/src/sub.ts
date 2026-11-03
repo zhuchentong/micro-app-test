@@ -16,6 +16,8 @@ export interface SubStoreSync {
 /**
  * 创建子应用侧 store 同步:host:state 快照单向写入本地 pinia 副本。
  * 非 wujie 独立运行(无 bus 无 props)时自然 no-op。
+ * @param options pinia 实例与可选同步 bus(缺省时回退 window.$wujie?.bus)
+ * @returns 同步器句柄:register 水合并注册快照监听,dispose 注销监听
  */
 export function createSubStoreSync(options: { pinia: Pinia; bus?: SyncBus }): SubStoreSync {
   const themeStore = useThemeStore(options.pinia);

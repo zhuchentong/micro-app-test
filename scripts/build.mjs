@@ -19,7 +19,10 @@ import { fileURLToPath } from "node:url";
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const appsDir = join(repoRoot, "apps");
 
-/** 发现 apps/* 下带 build 脚本的应用目录名(按名称排序,保证顺序稳定) */
+/**
+ * 发现 apps/* 下带 build 脚本的应用目录名(按名称排序,保证顺序稳定)
+ * @returns 排序后的应用目录名数组(仅含 package.json 带 build 脚本的目录)
+ */
 function discoverApps() {
   const names = [];
   for (const entry of readdirSync(appsDir, { withFileTypes: true })) {
@@ -36,6 +39,7 @@ function discoverApps() {
   return names.sort();
 }
 
+/** 全量构建入口:依次执行各应用的 build 并汇总结果 */
 function main() {
   const available = discoverApps();
   if (available.length === 0) {
