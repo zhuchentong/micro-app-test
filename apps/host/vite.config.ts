@@ -1,4 +1,4 @@
-import { defineAppConfig } from "@repo/vite";
+import { defineAppConfig } from "@repo/config-vite";
 
 export default defineAppConfig({
   // 5173 常被其他本地项目占用,固定 5175 保证入口 URL 稳定

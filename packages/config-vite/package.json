@@ -1,8 +1,8 @@
 {
-  "name": "@repo/vite",
+  "name": "@repo/config-vite",
   "version": "0.0.0",
   "private": true,
-  "description": "共享 app 级 vite 配置工厂(tailwindcss 挂载 + @repo/ui 组件按需引入 + ui.source 生成)",
+  "description": "共享 app 级 vite 配置工厂(tailwindcss 挂载 + @repo/tu-design 组件按需引入 + ui.source 生成)",
   "type": "module",
   "exports": {
     ".": "./index.ts"

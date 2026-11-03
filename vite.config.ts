@@ -1,6 +1,6 @@
 import { defineVizeLintConfig, flatConfigs } from "oxlint-plugin-vize";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
-import { repoJsdocPlugin, withJsdoc } from "@repo/lint/config";
+import { repoJsdocPlugin, withJsdoc } from "@repo/config-lint/config";
 
 export default defineConfig({
   staged: {
@@ -16,7 +16,7 @@ export default defineConfig({
     // src/types/generated/、src/styles/generated/ 为构建生成物(dts、tailwind @source 等),
     // 不入库,不参与格式化与 lint
     ignorePatterns: [
-      "packages/ui/src/components/ui/**",
+      "packages/tu-design/src/components/ui/**",
       "**/src/types/generated/**",
       "**/src/styles/generated/**",
       // wujie 共享依赖产物(build-shared.mjs 生成,不入库):压缩文件禁格式化与 lint
@@ -75,12 +75,12 @@ export default defineConfig({
     ...flatConfigs.recommended,
     ...flatConfigs.ecosystem,
     // jsdoc 片段经 withJsdoc 键级合并:ignorePatterns 保留,plugins/rules/settings 注入,
-    // require-jsdoc 豁免 overrides 追加(.vue/测试见 @repo/lint/config)
+    // require-jsdoc 豁免 overrides 追加(.vue/测试见 @repo/config-lint/config)
     withJsdoc({
       ignorePatterns: [
         "dist/**",
         "node_modules/**",
-        "packages/ui/src/components/ui/**",
+        "packages/tu-design/src/components/ui/**",
         "**/src/types/generated/**",
         "**/src/styles/generated/**",
         "**/public/libs/**",

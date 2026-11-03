@@ -8,7 +8,7 @@
  * 路径由本文件位置推导);解析上下文 = host 包(host devDependencies 含 vite/vue/pinia/
  * vue-router;workspace 根没有这些依赖),经 createRequire + 动态 import 显式锚定。
  *
- * 注意:独立构建脚本,禁止复用 @repo/vite 的 defineAppConfig——工厂会装配 external 插件,
+ * 注意:独立构建脚本,禁止复用 @repo/config-vite 的 defineAppConfig——工厂会装配 external 插件,
  * 把正要共享的依赖 external 掉。此处 configFile: false 双保险。
  */
 import {

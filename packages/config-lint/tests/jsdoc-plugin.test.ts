@@ -6,7 +6,7 @@ const rule = plugin.rules["require-jsdoc"];
 
 const tester = new RuleTester();
 
-describe("repo-lint/require-jsdoc", () => {
+describe("@repo/config-lint/require-jsdoc", () => {
   it("导出函数与模块级私有函数必须有 JSDoc", () => {
     tester.run("require-jsdoc", rule, {
       valid: [

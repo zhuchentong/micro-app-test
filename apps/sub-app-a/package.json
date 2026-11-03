@@ -13,15 +13,15 @@
     "@repo/share": "workspace:*",
     "@repo/store": "workspace:*",
     "@repo/themes": "workspace:*",
-    "@repo/ui": "workspace:*",
+    "@repo/tu-design": "workspace:*",
     "@repo/wujie-kit": "workspace:*",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@repo/typescript": "workspace:*",
-    "@repo/vite": "workspace:*",
+    "@repo/config-typescript": "workspace:*",
+    "@repo/config-vite": "workspace:*",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

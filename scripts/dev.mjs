@@ -17,6 +17,32 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
+import { AutocompletePrompt } from "@clack/core";
+
+/**
+ * 空格选中补丁:clack 的 AutocompletePrompt 仅在导航模式(按过 ↑/↓)下把空格当选中键,
+ * 初始输入模式下空格会被插入搜索词(经 fuzzyMatch 后过滤为空,表现为按下无效)。
+ * 这里让空格恒为动作键(不进搜索词),并在 prompt() 时挂 key 监听,
+ * 非导航模式下也执行 toggleSelected(监听晚于内部 #u 注册,导航模式不重复 toggle)。
+ * 依赖 _isActionKey/prompt 内部 API,升级 @clack/core 时需回归验证。
+ */
+const origIsActionKey = AutocompletePrompt.prototype._isActionKey;
+const origPrompt = AutocompletePrompt.prototype.prompt;
+AutocompletePrompt.prototype._isActionKey = function (char, key) {
+  if (key?.name === "space") return true;
+  return origIsActionKey.call(this, char, key);
+};
+AutocompletePrompt.prototype.prompt = function (...args) {
+  if (!this.__spaceToggleHooked) {
+    this.__spaceToggleHooked = true;
+    this.on("key", (char, key) => {
+      if (key?.name === "space" && !this.isNavigating && this.focusedValue !== undefined) {
+        this.toggleSelected(this.focusedValue);
+      }
+    });
+  }
+  return origPrompt.apply(this, args);
+};
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const appsDir = join(repoRoot, "apps");

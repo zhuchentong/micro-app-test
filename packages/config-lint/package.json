@@ -1,5 +1,5 @@
 {
-  "name": "@repo/lint",
+  "name": "@repo/config-lint",
   "version": "0.0.0",
   "private": true,
   "description": "共享 lint 规则包：自定义 jsdoc 插件(require-jsdoc) + jsdoc lint 配置片段(单一来源)",

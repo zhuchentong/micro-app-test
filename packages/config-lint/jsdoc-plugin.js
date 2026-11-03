@@ -106,6 +106,6 @@ const requireJsdoc = defineRule({
 });
 
 export default definePlugin({
-  meta: { name: "repo-lint" },
+  meta: { name: "@repo/config-lint" },
   rules: { "require-jsdoc": requireJsdoc },
 });

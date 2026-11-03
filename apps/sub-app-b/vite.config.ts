@@ -1,4 +1,4 @@
-import { defineAppConfig } from "@repo/vite";
+import { defineAppConfig } from "@repo/config-vite";
 
 export default defineAppConfig({
   // wujie 通过 fetch 拉取子应用 HTML,cors 必须开启

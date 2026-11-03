@@ -58,7 +58,7 @@ declare global {
     __MICRO_SHARED__?: MicroSharedRuntime;
   }
   /**
-   * 子应用构建期期望的共享依赖版本(@repo/vite 工厂 define 注入;
+   * 子应用构建期期望的共享依赖版本(@repo/config-vite 工厂 define 注入;
    * 独立构建/旧产物缺失时,sub.ts 的版本漂移检查自动跳过)。
    * 用 var 而非 const:多 app 虚拟项目合并诊断时环境声明需可合并(const 会 TS2451)。
    */

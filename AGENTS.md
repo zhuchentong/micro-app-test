@@ -28,10 +28,10 @@ release. Add a tool name to select part of the graph. For example, run
 
 <!--UI PACKAGES START-->
 
-# @repo/ui 组件约定
+# @repo/tu-design 组件约定
 
-- **来源分层**：`packages/ui/src/components/ui/` 是 tu-design CLI 按 registry 分发的 vendor 区（**禁手改**，升级用 `node scripts/update-ui.mjs`）；自研基础组件放 `packages/ui/src/components/app/`（`App` 前缀命名，禁止与上游组件重名）。
-- **消费方式**：模板直接写 `<Button>` / `<Card>` / `<Input>` / `<Popover>`（unplugin-vue-components `dirs` 自动导入，来自 `packages/ui/src/components`）；或显式 `import { Button } from "@repo/ui/button"`。
+- **来源分层**：`packages/tu-design/src/components/ui/` 是 tu-design CLI 按 registry 分发的 vendor 区（**禁手改**，升级用 `node scripts/update-ui.mjs`）；自研基础组件放 `packages/tu-design/src/components/app/`（`App` 前缀命名，禁止与上游组件重名）。
+- **消费方式**：模板直接写 `<Button>` / `<Card>` / `<Input>` / `<Popover>`（unplugin-vue-components `dirs` 自动导入，来自 `packages/tu-design/src/components`）；或显式 `import { Button } from "@repo/tu-design/button"`。
 - **样式纪律**：颜色一律用语义 token（`--app-*` / tu-design 语义变量），禁止字面色值；token 单源在 `@repo/themes`，host 是唯一 CSS 变量写入方（wujie 下变量经继承穿透子应用 DOM）。
 - **vendor 区豁免**：`components/ui/**` 被 fmt/lint ignore（保持 registry 原样，保证 `components.lock.json` hash 与 `tu-design diff` 判定准确）。
 - **升级流程**：改 `pnpm-workspace.yaml` catalog 版本 → `node scripts/update-ui.mjs` → `pnpm install` → `vp run check --force` + build 回归。

@@ -1,5 +1,5 @@
 /*
- * @repo/lint 配置片段：jsdoc lint 的单一来源。
+ * @repo/config-lint 配置片段：jsdoc lint 的单一来源。
  *（包名以 @ 开头，不能写进 JSDoc 块——check-tag-names 会将其误判为 tag）
  *
  * 消费方（root vite.config.ts）通过 withJsdoc 将本片段键级合并进既有 lint 块，
@@ -38,7 +38,7 @@ export const jsdocRules = {
   "jsdoc/no-blank-blocks": "error",
   "jsdoc/implements-on-classes": "error",
   "jsdoc/no-defaults": "error",
-  "repo-lint/require-jsdoc": "error",
+  "@repo/config-lint/require-jsdoc": "error",
 } as const;
 
 /** jsdoc 插件 settings：项目既有 `@internal` 用法（如 tabs.ts）不因规则启用而误伤 */
@@ -48,8 +48,8 @@ export const jsdocSettings = {
 
 /** 自定义插件注册项（specifier 形式，与 `vite-plus/oxlint-plugin` 同构） */
 export const repoJsdocPlugin = {
-  name: "repo-lint",
-  specifier: "@repo/lint/jsdoc-plugin",
+  name: "@repo/config-lint",
+  specifier: "@repo/config-lint/jsdoc-plugin",
 } as const;
 
 /**
@@ -58,7 +58,7 @@ export const repoJsdocPlugin = {
  *   ——测试内的 mock 工厂注释是行内说明而非 API 文档；保留 check-* 轻量拼写规范
  * - `.vue`：`<script setup>` 顶层绑定是组件内部实现而非模块 API；结构规则
  *   （require-param 等）对 `.vue` 仍生效（已实测），仅关闭强制 JSDoc
- * - `packages/lint/**`：规则自举（dogfooding）豁免，规则稳定 1~2 个迭代后移除
+ * - `packages/config-lint/**`：规则自举（dogfooding）豁免，规则稳定 1~2 个迭代后移除
  */
 export const jsdocExemptOverrides: Array<{
   files: string[];
@@ -67,7 +67,7 @@ export const jsdocExemptOverrides: Array<{
   {
     files: ["**/*.test.ts", "**/*.spec.ts", "**/tests/**"],
     rules: {
-      "repo-lint/require-jsdoc": "off",
+      "@repo/config-lint/require-jsdoc": "off",
       "jsdoc/require-param": "off",
       "jsdoc/require-param-description": "off",
       "jsdoc/require-param-name": "off",
@@ -78,11 +78,11 @@ export const jsdocExemptOverrides: Array<{
   },
   {
     files: ["**/*.vue"],
-    rules: { "repo-lint/require-jsdoc": "off" },
+    rules: { "@repo/config-lint/require-jsdoc": "off" },
   },
   {
-    files: ["packages/lint/**"],
-    rules: { "repo-lint/require-jsdoc": "off" },
+    files: ["packages/config-lint/**"],
+    rules: { "@repo/config-lint/require-jsdoc": "off" },
   },
 ];
 

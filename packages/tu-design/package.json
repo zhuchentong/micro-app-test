@@ -1,5 +1,5 @@
 {
-  "name": "@repo/ui",
+  "name": "@repo/tu-design",
   "version": "0.0.0",
   "private": true,
   "description": "UI 基础层:tu-design CLI 按 registry 分发的组件源码(components/ui vendor 区,禁手改)+ 平台自研基础组件(components/app 区,App 前缀)。内部包,源码直出,由消费方各自编译",
@@ -21,8 +21,8 @@
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {
-    "@repo/typescript": "workspace:*",
-    "@repo/ui": "workspace:*",
+    "@repo/config-typescript": "workspace:*",
+    "@repo/tu-design": "workspace:*",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
     "vue": "catalog:"

@@ -11,8 +11,9 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@clack/core": "catalog:",
     "@clack/prompts": "catalog:",
-    "@repo/lint": "workspace:*",
+    "@repo/config-lint": "workspace:*",
     "@types/node": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
     "oxlint-plugin-vize": "catalog:",

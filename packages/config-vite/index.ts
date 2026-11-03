@@ -91,13 +91,13 @@ function sharedDepsHtmlPlugin(): Plugin {
 }
 
 /**
- * 共享 app 级 vite 配置工厂:封装 tailwindcss 挂载、@repo/ui 组件按需引入与
+ * 共享 app 级 vite 配置工厂:封装 tailwindcss 挂载、@repo/tu-design 组件按需引入与
  * ui.source.css 生成,app 侧 vite.config.ts 仅保留 server 差异项。
  * 外加 wujie 依赖共享:生产构建 external vue/pinia/vue-router → window.__MICRO_SHARED__。
  *
  * 执行上下文(已实测):
  * - 本工厂被 config 打包后 import.meta.url 恒为本模块源码位置
- *   (<root>/packages/vite/index.ts),故 workspace 根由模块位置稳定推导;
+ *   (<root>/packages/config-vite/index.ts),故 workspace 根由模块位置稳定推导;
  * - `vp run <pkg>#<script>` 的任务解析 pre-pass 会以仓库根为 cwd 多次执行
  *   本配置,真实 vite dev/build/test 进程的 cwd 才是 app root。
  * 因此:app root 用 cwd 是否位于 <root>/apps/ 下判定;pre-pass(cwd=仓库根)
@@ -110,10 +110,10 @@ export function defineAppConfig(options: AppOptions = {}) {
   const cwd = process.cwd();
   const appsDir = `${join(workspaceRoot, "apps")}${sep}`;
   const appRoot = cwd.startsWith(appsDir) ? cwd : null;
-  const uiSrcDir = join(workspaceRoot, "packages/ui/src");
+  const uiSrcDir = join(workspaceRoot, "packages/tu-design/src");
 
   if (appRoot) {
-    // Tailwind 扫描 @repo/ui 组件源码:vite root 外的目录,显式 @source 注册。
+    // Tailwind 扫描 @repo/tu-design 组件源码:vite root 外的目录,显式 @source 注册。
     // config 加载时生成 src/styles/generated/ui.source.css(gitignored),供 style.css @import 消费。
     const generatedDir = join(appRoot, "src/styles/generated");
     mkdirSync(generatedDir, { recursive: true });
@@ -151,7 +151,7 @@ export function defineAppConfig(options: AppOptions = {}) {
                   svg: FileSystemIconLoader(join(process.cwd(), "src/assets/svgs")),
                 },
               }),
-              // @repo/ui 组件免 import 按需引入(dirs 递归:components/ui 上游件原名,components/app 自研件前缀名)
+              // @repo/tu-design 组件免 import 按需引入(dirs 递归:components/ui 上游件原名,components/app 自研件前缀名)
               // dts 生成物入 src/types/generated/(gitignored),dev/build 启动时自动重新生成
               // 图标经 IconsResolver 按需解析:prefix "icon" → <icon-tdesign-xxx /> / <icon-svg-xxx />,
               // enabledCollections 锁定 TDesign 防误用其它集合,customCollections 注册本地图标集合 svg

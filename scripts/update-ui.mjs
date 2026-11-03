@@ -1,4 +1,4 @@
-// @repo/ui 组件升级脚本:tu-design registry → packages/ui 的一条命令同步。
+// @repo/tu-design 组件升级脚本:tu-design registry → packages/tu-design 的一条命令同步。
 //
 // 流程:① tu-design diff 预览线上变化(components.lock.json 三方比对)
 //      ② tu-design add --overwrite --no-install --relative-imports [--all | 组件名...]
@@ -8,7 +8,7 @@
 //
 // 用法:node scripts/update-ui.mjs [组件名...]   缺省 = --all(components.lock.json 全量)
 //      node scripts/update-ui.mjs --tokens-only 仅同步 themes tokens(跳过组件 diff/add)
-// 前置:packages/ui/components.json 已由 `tu-design init` 生成。
+// 前置:packages/tu-design/components.json 已由 `tu-design init` 生成。
 
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -18,7 +18,7 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const uiRoot = join(repoRoot, "packages", "ui");
+const uiRoot = join(repoRoot, "packages", "tu-design");
 
 const argv = process.argv.slice(2);
 const tokensOnly = argv.includes("--tokens-only");
@@ -51,8 +51,8 @@ if (!tokensOnly) {
 if (!tokensOnly)
   console.log(`
 ✔ 完成。请人工审查:
-  1. cd packages/ui && git diff —— 预期仅上游版本差异(vendor 区已被 fmt/lint ignore,不会被本地工具链改写)
-  2. pnpm install(若 registry 声明了新依赖,手动补进 packages/ui/package.json 后安装)
+  1. cd packages/tu-design && git diff —— 预期仅上游版本差异(vendor 区已被 fmt/lint ignore,不会被本地工具链改写)
+  2. pnpm install(若 registry 声明了新依赖,手动补进 packages/tu-design/package.json 后安装)
   3. vp run check --force + vp run build 回归`);
 
 // ===== tokens 同步:@tu-design/vue registry → packages/themes(独立通道,不走 CLI) =====
