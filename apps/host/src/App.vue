@@ -2,13 +2,19 @@
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { bus } from "wujie";
 import { appEvents } from "@repo/wujie-kit";
-import type { TabOpenPayload, TabRoutePayload, TabTitlePayload } from "@repo/wujie-kit";
+import type {
+  TabOpenPayload,
+  TabRoutePayload,
+  TabTitlePayload,
+  MenuReportPayload,
+} from "@repo/wujie-kit";
 import { useThemeStore } from "@repo/store";
 import { formatClockTime } from "@repo/share";
 import AppBadge from "./components/AppBadge.vue";
 import { apps } from "./apps";
 import type { MenuEntry } from "./apps";
 import { useTabsStore } from "./stores/tabs";
+import { useMenuStore } from "./stores/menu";
 
 interface LogEntry {
   id: number;
@@ -71,6 +77,7 @@ function resetAccent(): void {
   themeStore.setCustom({});
 }
 const tabs = useTabsStore();
+const menuStore = useMenuStore();
 const logs = ref<LogEntry[]>([]);
 const broadcastText = ref("");
 let logId = 0;
@@ -114,6 +121,12 @@ function onTabTitle(payload?: TabTitlePayload): void {
   if (payload) tabs.applyTabTitle(payload);
 }
 
+function onMenuReport(payload?: MenuReportPayload): void {
+  if (!payload) return;
+  menuStore.applyReport(payload);
+  addLog("host", `菜单上报 ${payload.app} · ${payload.menu.length} 项`);
+}
+
 function onNotify(data: { from: string; text: string }): void {
   addLog(data.from, data.text);
 }
@@ -123,6 +136,7 @@ onMounted(async () => {
   bus.$on(appEvents.tabRoute, onTabRoute);
   bus.$on(appEvents.tabTitle, onTabTitle);
   bus.$on(appEvents.notify, onNotify);
+  bus.$on(appEvents.menu, onMenuReport);
 
   // 启动顺序:子应用实例的 Tab 事件已在事件契约中,listener 先注册再恢复 Tab
   tabs.init(apps);
@@ -134,6 +148,7 @@ onUnmounted(() => {
   bus.$off(appEvents.tabRoute, onTabRoute);
   bus.$off(appEvents.tabTitle, onTabTitle);
   bus.$off(appEvents.notify, onNotify);
+  bus.$off(appEvents.menu, onMenuReport);
 });
 </script>
 
@@ -168,7 +183,7 @@ onUnmounted(() => {
         <section v-for="app in apps" :key="app.key" class="app-group">
           <AppBadge :label="app.name" :color="app.color" />
           <button
-            v-for="menu in app.menu"
+            v-for="menu in menuStore.menuFor(app.key)"
             :key="app.key + menu.path"
             class="menu-item"
             type="button"

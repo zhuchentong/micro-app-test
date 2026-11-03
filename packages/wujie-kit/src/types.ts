@@ -1,3 +1,5 @@
+import type { MenuEntry } from "./events";
+
 /** 主/子应用 bus 最小结构接口(wujie 导出的 bus 结构兼容,必要时由调用方断言) */
 export interface SyncBus {
   $emit(event: string, data?: unknown): void;
@@ -17,6 +19,8 @@ export interface MicroApp {
 export interface SubAppConfig {
   name: string;
   accent: string;
+  /** 侧栏菜单上报内容(App.vue 组合根处 reportMenu 上报;缺省则 host 用静态兜底) */
+  menu?: MenuEntry[];
 }
 
 /** Tab 身份信息:由主应用确定性生成,经 startApp props 注入子应用 */

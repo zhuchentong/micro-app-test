@@ -1,7 +1,14 @@
 import { ref } from "vue";
 import type { App as VueApp, Ref } from "vue";
 import { appEvents } from "./events";
-import type { BroadcastPayload, TabOpenPayload, TabRoutePayload, TabTitlePayload } from "./events";
+import type {
+  BroadcastPayload,
+  MenuEntry,
+  MenuReportPayload,
+  TabOpenPayload,
+  TabRoutePayload,
+  TabTitlePayload,
+} from "./events";
 import type { HostProps, SubAppConfig } from "./types";
 
 /** 是否运行在 wujie 环境中 */
@@ -31,6 +38,8 @@ export interface SubBus {
   syncTabRoute(page: string, query?: RouteQuery): void;
   /** 子应用 → 主应用:回报 Tab 标题(host 仅信任激活 Tab;非 wujie 环境无操作) */
   syncTabTitle(title: string): void;
+  /** 子应用 → 主应用:上报侧栏菜单(覆盖 host 静态兜底;非 wujie 环境无操作) */
+  reportMenu(menu: MenuEntry[]): void;
 }
 
 /** 读取注入的 Tab 身份(props 在 startApp 时一次性注入,动态读取避免时序差异) */
@@ -97,6 +106,12 @@ export function createSubBus(config: SubAppConfig): SubBus {
       if (!tab) return;
       const payload: TabTitlePayload = { id: tab.id, title };
       window.$wujie?.bus?.$emit(appEvents.tabTitle, payload);
+    },
+    reportMenu(menu: MenuEntry[]): void {
+      const tab = currentTab();
+      if (!tab) return;
+      const payload: MenuReportPayload = { app: tab.app, menu };
+      window.$wujie?.bus?.$emit(appEvents.menu, payload);
     },
   };
 }

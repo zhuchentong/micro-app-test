@@ -1,11 +1,8 @@
 import type { MicroApp } from "@repo/wujie-kit";
 
-/** 主应用菜单项(静态注册;子应用上报菜单为后续增强) */
-export interface MenuEntry {
-  label: string;
-  path: string;
-  query?: Record<string, string>;
-}
+// 菜单项形状上移到 bus 契约(host 静态兜底与子应用上报共用同一类型)
+export type { MenuEntry } from "@repo/wujie-kit";
+import type { MenuEntry } from "@repo/wujie-kit";
 
 /** host 注册表条目:子应用元信息 + 侧栏菜单 */
 export interface HostApp extends MicroApp {

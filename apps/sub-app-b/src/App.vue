@@ -9,6 +9,9 @@ const route = useRoute();
 
 const userStore = useUserStore();
 
+// 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
+if (appConfig.menu) subBus.reportMenu(appConfig.menu);
+
 /** Tab 内导航同步(替代 wujie sync):路由变化上报主应用,标题走 tab 契约 */
 watch(
   () => [route.path, route.query] as const,
@@ -23,15 +26,6 @@ watch(
 
 <template>
   <div class="app">
-    <!-- TODO(tu-design 冒烟):验证通过后删除 -->
-    <div
-      class="fixed bottom-4 left-4 z-50 flex w-64 flex-col gap-3 rounded-lg border bg-card p-4 shadow-md"
-    >
-      <p class="text-sm font-medium">tu-design 冒烟(sub-app-b)</p>
-      <Button>确认</Button>
-      <Input placeholder="focus ring 应跟随主题" />
-      <p class="text-xs text-muted-foreground">明暗切换经 host :root 穿透</p>
-    </div>
     <header class="header" :style="{ borderColor: appConfig.accent }">
       <span class="logo" :style="{ background: appConfig.accent }" />
       <strong>{{ appConfig.name }}</strong>

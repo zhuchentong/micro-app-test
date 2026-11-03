@@ -8,6 +8,8 @@ export { appEvents } from "./events";
 export type {
   BroadcastPayload,
   HostStatePayload,
+  MenuEntry,
+  MenuReportPayload,
   TabOpenPayload,
   TabRoutePayload,
   TabTitlePayload,

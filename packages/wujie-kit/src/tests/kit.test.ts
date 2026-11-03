@@ -9,7 +9,8 @@ import {
   startTabApp,
 } from "../host.ts";
 import type { StartAppOptions, TabAppOptions } from "../host.ts";
-import { useHostProps } from "../sub.ts";
+import { createSubBus, useHostProps } from "../sub.ts";
+import type { SubAppConfig } from "../types.ts";
 import type { HostProps, MicroApp } from "../types.ts";
 
 const apps: MicroApp[] = [
@@ -35,6 +36,7 @@ test("appEvents 事件契约字段齐全", () => {
     broadcast: "host:broadcast",
     state: "host:state",
     stateRequest: "sub:state-request",
+    menu: "sub:menu",
   });
 });
 
@@ -203,4 +205,31 @@ test("startTabApp 未注册 tab.app 不调用 startApp", () => {
     tab: { id: "x", app: "nope", page: "/", el: "#host-tab-x" },
   });
   expect(calls).toHaveLength(0);
+});
+
+test("reportMenu 以 props.tab.app 上报菜单,无 tab props 时 no-op", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const emitted: Array<{ event: string; data?: unknown }> = [];
+  globalAny.window = {
+    $wujie: {
+      props: { tab: { id: "t1", app: "sub-a", page: "/" } },
+      bus: { $emit: (event: string, data?: unknown) => emitted.push({ event, data }) },
+    },
+  };
+
+  try {
+    const bus = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    bus.reportMenu([{ label: "首页", path: "/" }]);
+    expect(emitted).toEqual([
+      { event: appEvents.menu, data: { app: "sub-a", menu: [{ label: "首页", path: "/" }] } },
+    ]);
+
+    // 无 tab props(独立运行/单容器遗留):no-op 不抛错
+    globalAny.window = { $wujie: { props: {}, bus: { $emit: () => {} } } };
+    expect(() => bus.reportMenu([{ label: "首页", path: "/" }])).not.toThrow();
+    expect(emitted).toHaveLength(1);
+  } finally {
+    globalAny.window = originalWindow;
+  }
 });

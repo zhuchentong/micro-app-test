@@ -16,6 +16,8 @@ export const appEvents = {
   tabRoute: "host:tab-route",
   /** 子应用 → 主应用:Tab 标题回报(document.title 仅跟随激活 Tab) */
   tabTitle: "host:tab-title",
+  /** 子应用 → 主应用:上报侧栏菜单(host 静态注册为兜底,上报后覆盖) */
+  menu: "sub:menu",
 } as const;
 
 /** host:broadcast 事件 payload */
@@ -62,4 +64,18 @@ export interface TabRoutePayload {
 export interface TabTitlePayload {
   id: string;
   title: string;
+}
+
+/** 侧栏菜单项(host 静态注册与子应用上报共用同一形状) */
+export interface MenuEntry {
+  label: string;
+  path: string;
+  query?: Record<string, string>;
+}
+
+/** sub:menu 事件 payload;host 按 app key 覆盖静态兜底菜单,重复上报幂等 */
+export interface MenuReportPayload {
+  /** 注册表 app key(来自注入的 props.tab.app) */
+  app: string;
+  menu: MenuEntry[];
 }
