@@ -81,6 +81,12 @@ export const jsdocExemptOverrides: Array<{
     rules: { "@repo/config-lint/require-jsdoc": "off" },
   },
   {
+    // vendor 记账文件:update-ui.mjs 按 @tu-design/vue registry 规范内容写入并记 hash
+    // (components.lock.json/tokens.lock.json),手改会造成三方 diff 漂移 —— 与 components/ui/** 同性质豁免
+    files: ["packages/tu-design/src/lib/**"],
+    rules: { "@repo/config-lint/require-jsdoc": "off" },
+  },
+  {
     files: ["packages/config-lint/**"],
     rules: { "@repo/config-lint/require-jsdoc": "off" },
   },

@@ -2,6 +2,7 @@ import { ref } from "vue";
 import type { App as VueApp, Ref } from "vue";
 import { appEvents } from "./events";
 import type {
+  AuthLoginPayload,
   BroadcastPayload,
   MenuEntry,
   MenuReportPayload,
@@ -46,6 +47,8 @@ export interface SubBus {
   syncTabTitle(title: string): void;
   /** 子应用 → 主应用:上报侧栏菜单(覆盖 host 静态兜底;非 wujie 环境无操作) */
   reportMenu(menu: MenuEntry[]): void;
+  /** 子应用 → 主应用:登录成功上报(授权网关校验通过;非 wujie 环境无操作) */
+  reportLogin(user: { id: string; name: string }): void;
 }
 
 /**
@@ -127,6 +130,10 @@ export function createSubBus(config: SubAppConfig): SubBus {
       if (!tab) return;
       const payload: MenuReportPayload = { app: tab.app, menu };
       window.$wujie?.bus?.$emit(appEvents.menu, payload);
+    },
+    reportLogin(user: { id: string; name: string }): void {
+      const payload: AuthLoginPayload = { user: { ...user } };
+      window.$wujie?.bus?.$emit(appEvents.authLogin, payload);
     },
   };
 }

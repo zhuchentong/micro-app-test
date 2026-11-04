@@ -37,7 +37,7 @@ apps/*/src/types/generated/
 # wujie 共享依赖 bundle(scripts/build-shared.mjs 生成,不入库;每次 build 前自动重新生成)
 apps/*/public/generated/
 # 共享 bundle 构建临时目录(异常中断时的残留防护;正常路径由脚本 finally 自清理)
-apps/host/.shared-build-*/
+apps/micro-host/.shared-build-*/
 !.vscode/
 !.vscode/settings.json
 !.vscode/extensions.json

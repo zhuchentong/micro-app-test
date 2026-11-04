@@ -45,6 +45,6 @@ vp run e2e
 运行时同步:host store 变更 → bus "host:state"(全量快照 + rev)→ 子应用按 rev 判重 → $patch 本地 store
 ```
 
-- host(`apps/host`):`initWujie` + `createHostStoreSync`,负责广播快照
-- 子应用(`apps/sub-app-a` / `apps/sub-app-b`):mount 回调内 `createSubStoreSync({ pinia })`,负责水合与监听
+- host(`apps/micro-host`):`initWujie` + `createHostStoreSync`,负责广播快照
+- 子应用(`apps/micro-app-a` / `apps/micro-app-b`):mount 回调内 `createSubStoreSync({ pinia })`,负责水合与监听
 - 契约:`packages/wujie-kit`(`appEvents.state`)+ `packages/store`(`useThemeStore` / `useUserStore` / `createSubStoreSync`)

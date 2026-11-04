@@ -110,6 +110,7 @@ export const themeVars = [
   "--app-bg-page",
   "--app-bg-surface",
   "--app-bg-raised",
+  "--app-bg-substrate",
   "--app-bg-hover",
   "--app-bg-tab-inactive",
   "--app-header-bg",
@@ -171,6 +172,8 @@ export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
     "--app-bg-page": neutralPalette.canvas,
     "--app-bg-surface": neutralPalette.white,
     "--app-bg-raised": neutralPalette.n25,
+    // 衬底卡(host 子应用容器底座,设计稿 #DCE8F2)
+    "--app-bg-substrate": neutralPalette.n200,
     "--app-bg-hover": brandPalette.softBgAlt,
     "--app-bg-tab-inactive": neutralPalette.n25,
     "--app-header-bg": neutralPalette.white,
@@ -200,6 +203,8 @@ export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
     "--app-bg-page": darkSurface.canvas,
     "--app-bg-surface": darkSurface.surface,
     "--app-bg-raised": darkSurface.raised,
+    // 衬底卡:暗色取 raised(比 surface 亮一层,保持卡片上抬感;若取 surface 会与内容卡同色失层次)
+    "--app-bg-substrate": darkSurface.raised,
     "--app-bg-hover": darkSurface.hover,
     "--app-bg-tab-inactive": darkSurface.canvas,
     "--app-header-bg": darkSurface.surface,

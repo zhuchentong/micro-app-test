@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { formatClockTime, formatDuration } from "@repo/share";
+import { formatClockTime, formatDuration } from "./format";
 
 describe("formatDuration", () => {
   it("小于 60 秒只显示秒", () => {

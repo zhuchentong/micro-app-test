@@ -6,6 +6,7 @@ import "./globals";
 
 export { appEvents } from "./events";
 export type {
+  AuthLoginPayload,
   BroadcastPayload,
   HostStatePayload,
   MenuEntry,

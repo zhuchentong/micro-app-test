@@ -132,7 +132,7 @@ function parseQueryParams(search: string): Record<string, string> {
  * token 参数不参与(与 parseLocation 契约一致)。
  *
  * @param app   子应用注册键
- * @param page  Tab 内页面路径(如 "/product/1")
+ * @param page  Tab 内页面路径(如 "/products/1")
  * @param query 页面 query;token 不参与生成
  * @returns 确定性 tabId,同参数恒同值
  */

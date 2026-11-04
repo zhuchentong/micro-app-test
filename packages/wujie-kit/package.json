@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./bus": "./src/bus.ts",
     "./host": "./src/host.ts",
     "./sub": "./src/sub.ts"
   },

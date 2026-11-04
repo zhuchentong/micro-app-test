@@ -4,7 +4,11 @@
     // vendor 区(components/ui)保持 registry 原样:上游存在的未使用符号不在本地修复,
     // 包级关闭未使用检查,避免 pre-commit typecheck 拦截 tu-design 升级
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "paths": {
+      // registry 新版 vendor 组件的 @/ 别名(如 @/lib/utils)→ 包内 src;与 config-vite 的 resolve.alias 对应
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src"]
 }

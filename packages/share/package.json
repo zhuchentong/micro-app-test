@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./ui/PageContainer": "./src/ui/PageContainer/index.ts",
     "./*": "./src/*"
   },
   "scripts": {
@@ -13,7 +14,8 @@
   },
   "dependencies": {
     "@repo/store": "workspace:*",
-    "vue": "catalog:"
+    "vue": "catalog:",
+    "vue-router": "catalog:"
   },
   "devDependencies": {
     "@repo/config-typescript": "workspace:*",

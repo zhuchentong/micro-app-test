@@ -5,7 +5,13 @@
  *
  * 用法:
  *   node scripts/dev.mjs                # 交互选择(非 TTY 时启动全部)
+ *   node scripts/dev.mjs --all          # 启动全部应用(跳过交互)
  *   node scripts/dev.mjs <名字...>       # 直达模式，跳过交互(名字含宿主即含宿主)
+ *   node scripts/dev.mjs --host 0.0.0.0 # 全网卡监听并打印局域网分享地址(--host 语义同 vite)
+ *
+ * --host 转发给各 app 的 vp dev(无值 = 监听所有地址);裸 --host 紧跟已知应用名时
+ * 按位置参数处理(应用名与主机名空间不相交,无歧义):
+ *   nr dev --host micro-app-a ≡ nr dev micro-app-a --host
  *
  * 宿主识别:package.json 的 dependencies 含 wujie。
  * 端口提示:提取 vite.config.ts 中 server.port 字面量(与 stop.mjs 相同规则)。
@@ -14,6 +20,7 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as p from "@clack/prompts";
@@ -91,6 +98,28 @@ function listenerPids(port) {
 }
 
 /**
+ * 收集本机可分享 IPv4 地址(排除 loopback/link-local),私网前缀优先排序:
+ * 192.168 > 10. > 172.16-31 > 其他,避免 docker0 等虚拟网卡地址排在首位。
+ * @returns 可分享的 IPv4 地址列表(可能为空)
+ */
+function lanAddresses() {
+  const ips = [];
+  for (const list of Object.values(networkInterfaces())) {
+    for (const info of list ?? []) {
+      if (info.family !== "IPv4" || info.internal || info.address.startsWith("169.254.")) continue;
+      ips.push(info.address);
+    }
+  }
+  const rank = (ip) => {
+    if (ip.startsWith("192.168.")) return 0;
+    if (ip.startsWith("10.")) return 1;
+    if (/^172\.(1[6-9]|2\d|3[01])\./.test(ip)) return 2;
+    return 3;
+  };
+  return ips.sort((a, b) => rank(a) - rank(b));
+}
+
+/**
  * 启动前端口预检:被占用时先执行 stop.mjs 清理本仓库残留进程,复查仍占用则告警
  * @param targets 待启动的应用清单(仅含配置端口者参与检查)
  */
@@ -142,13 +171,45 @@ function fuzzyMatch(search, text) {
 }
 
 // ---------- 选择 ----------
+// --host 转发给各 app 的 vp dev(vite 语义:无值 = 监听所有地址),其余 - 开头选项不支持。
+// 裸 --host 在 vite 语义下会吞掉紧跟的 token;此处当下一 token 是已知应用名时按位置参数处理:
+//   nr dev --host micro-app-a ≡ nr dev micro-app-a --host
 const args = process.argv.slice(2);
-const badArgs = args.filter((a) => a.startsWith("-"));
+const hostArgs = [];
+const nameArgs = [];
+const badArgs = [];
+let allFlag = false;
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i];
+  if (arg === "--all") {
+    allFlag = true;
+  } else if (arg === "--host") {
+    const next = args[i + 1];
+    if (next !== undefined && !next.startsWith("-") && knownNames.has(next)) {
+      hostArgs.push("--host"); // 已知应用名 → 按位置参数,host 取无值语义
+    } else if (next !== undefined && !next.startsWith("-")) {
+      hostArgs.push("--host", next); // 常规:消费值,不落入下方 unknown 校验
+      i++;
+    } else {
+      hostArgs.push("--host");
+    }
+  } else if (arg.startsWith("--host=")) {
+    hostArgs.push("--host", arg.slice("--host=".length));
+  } else if (arg.startsWith("-")) {
+    badArgs.push(arg);
+  } else {
+    nameArgs.push(arg);
+  }
+}
 if (badArgs.length > 0) {
   console.error(`[dev] 不支持的选项:${badArgs.join(" ")}`);
   process.exit(1);
 }
-const unknown = args.filter((n) => !knownNames.has(n));
+if (allFlag && nameArgs.length > 0) {
+  console.error(`[dev] --all 不能与位置参数(应用名)同时使用:${nameArgs.join(" ")}`);
+  process.exit(1);
+}
+const unknown = nameArgs.filter((n) => !knownNames.has(n));
 if (unknown.length > 0) {
   console.error(`[dev] 未知应用:${unknown.join(", ")}`);
   console.error(`可用应用:${[...knownNames].join(", ")}`);
@@ -156,8 +217,11 @@ if (unknown.length > 0) {
 }
 
 let selectedNames;
-if (args.length > 0) {
-  selectedNames = new Set(args);
+if (allFlag) {
+  console.log("[dev] --all,启动全部应用");
+  selectedNames = new Set(knownNames);
+} else if (nameArgs.length > 0) {
+  selectedNames = new Set(nameArgs);
 } else if (!process.stdin.isTTY) {
   console.log("[dev] 非交互环境,启动全部应用");
   selectedNames = new Set(knownNames);
@@ -276,7 +340,9 @@ process.on("SIGTERM", terminateAll);
 function launchApp(app, colorIndex) {
   const prefix = `${colors[colorIndex % colors.length]}${app.name.padEnd(width)}${reset}`;
   // detached:独立进程组,便于整组终止(vp run -> vp dev -> vite 进程树)
-  const proc = spawn("vp", ["run", `${app.name}#dev`], {
+  // --host 经 -- 分隔符透传给 vp dev(实测无 -- 时参数会被 vp 误传给 node)
+  const extraArgs = hostArgs.length > 0 ? ["--", ...hostArgs] : [];
+  const proc = spawn("vp", ["run", `${app.name}#dev`, ...extraArgs], {
     cwd: repoRoot,
     env: { ...process.env, FORCE_COLOR: "1" },
     stdio: ["ignore", "pipe", "pipe"],
@@ -336,5 +402,12 @@ if (hostTargets.length > 0) {
   for (const app of hostTargets) {
     console.log(`[dev] 启动宿主 ${app.name}`);
     launchApp(app, targets.indexOf(app));
+  }
+  // 显式启用 --host 且宿主有配置端口时,汇总打印局域网分享地址
+  // (vite 自身的 Network 行混于多应用日志,不够醒目)
+  const hostPort = hostTargets.find((a) => a.port != null)?.port;
+  const lan = lanAddresses();
+  if (hostArgs.length > 0 && hostPort != null && lan.length > 0) {
+    console.log(`[dev] 可分享地址:${lan.map((ip) => `http://${ip}:${hostPort}`).join(" 或 ")}`);
   }
 }

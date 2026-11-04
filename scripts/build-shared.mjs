@@ -26,7 +26,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const hostRoot = join(workspaceRoot, "apps/host");
+const hostRoot = join(workspaceRoot, "apps/micro-host");
 const hostRequire = createRequire(join(hostRoot, "package.json"));
 
 /**

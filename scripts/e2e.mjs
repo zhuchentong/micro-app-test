@@ -330,9 +330,10 @@ async function startDev() {
   devProcess = spawn("node", ["scripts/dev.mjs"], { cwd: repoRoot, stdio: "ignore" });
   devProcess.on("error", (error) => console.error(`[e2e] dev.mjs 进程异常: ${error.message}`));
   await waitHttpReady(HOST_URL, READY_TIMEOUT_MS);
-  // 子应用端口双检(dev.mjs 已保证顺序就绪,此处仅防御)
+  // 子应用端口双检(dev.mjs 已保证顺序就绪,此处仅防御;7203 为授权网关)
   await waitHttpReady("http://localhost:7201", 15_000);
   await waitHttpReady("http://localhost:7202", 15_000);
+  await waitHttpReady("http://localhost:7203", 15_000);
 }
 
 /**
@@ -378,9 +379,10 @@ async function preflight() {
 
 /**
  * 基线重置:打开 host 后清空 localStorage/sessionStorage 并 reload,
- * 保证 Tab 快照与布局偏好不跨运行残留;图标导航就绪即视为 host 可交互
+ * 保证 Tab 快照与布局偏好不跨运行残留;清空即未登录,经授权网关登录页
+ * 完成 admin 登录,图标导航就绪即视为 host 可交互
  *
- * @returns {Promise<void>} 重置完成且图标导航就绪即返回
+ * @returns {Promise<void>} 重置完成且登录后图标导航就绪即返回
  */
 async function resetBaseline() {
   await openWithRetry(HOST_URL);
@@ -389,7 +391,35 @@ async function resetBaseline() {
     "(() => { localStorage.clear(); sessionStorage.clear(); location.reload(); return { cleared: true }; })()",
   );
   await waitLoad("load");
-  await waitFn("document.querySelectorAll('.nav-item').length === 2", "host 图标导航就绪");
+  await loginViaGateway("admin", "123456");
+  await waitFn("document.querySelectorAll('.nav-item').length === 2", "登录后 host 图标导航就绪");
+}
+
+/**
+ * 经授权网关登录页完成模拟登录。
+ * 登录表单在网关子应用的 wujie shadowRoot 内:JS 填值后派发 input 事件同步 v-model,
+ * 提交按钮 JS click(wujie iframe 覆盖,原生点击会被 actionability 检查拒绝,同 jsClickInActiveApp)
+ *
+ * @param {string} username 用户名
+ * @param {string} password 密码
+ * @returns {Promise<Record<string, unknown>>} { filled: boolean }
+ */
+async function loginViaGateway(username, password) {
+  await waitFn(
+    "(() => { const sr = document.querySelector('wujie-app')?.shadowRoot;" +
+      " return !!sr && !!sr.querySelector('#login-username'); })()",
+    "授权网关登录页就绪",
+  );
+  return evalJson(
+    "(() => { const sr = document.querySelector('wujie-app')?.shadowRoot;" +
+      " const u = sr && sr.querySelector('#login-username');" +
+      " const p = sr && sr.querySelector('#login-password');" +
+      " const btn = sr && sr.querySelector('button[type=\"submit\"]');" +
+      " if (!u || !p || !btn) return { filled: false };" +
+      ` u.value = ${JSON.stringify(username)}; u.dispatchEvent(new Event('input', { bubbles: true }));` +
+      ` p.value = ${JSON.stringify(password)}; p.dispatchEvent(new Event('input', { bubbles: true }));` +
+      " btn.click(); return { filled: true }; })()",
+  );
 }
 
 /**
@@ -440,7 +470,7 @@ async function flow2OpenTab() {
 }
 
 /**
- * 链路 3:子应用渲染 + store 同步(props 水合与握手快照均为「宿主张三」/light)
+ * 链路 3:子应用渲染 + store 同步(props 水合与握手快照均为「管理员」/light)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
@@ -451,14 +481,33 @@ async function flow3RenderAndSync() {
       " const el = pane && pane.querySelector('wujie-app');" +
       " const sr = el && el.shadowRoot;" +
       " const text = sr ? sr.textContent : '';" +
-      " return { shadow: !!sr, user: text.includes('宿主张三'), light: text.includes('主题light')," +
+      " return { shadow: !!sr, user: text.includes('管理员'), light: text.includes('主题light')," +
       " props: text.includes('主应用注入的 props'), share: text.includes('@repo/share') }; })()",
   );
   expect("wujie shadowRoot 渲染", state.shadow, true);
-  expect("props 水合: 用户 宿主张三", state.user, true);
+  expect("props 水合: 用户 管理员", state.user, true);
   expect("握手快照: 主题 light", state.light, true);
   expect("props 快照区存在", state.props, true);
   expect("共享组件 @repo/share 正常", state.share, true);
+
+  // 容器内滚动:激活 pane 必须是滚动容器(overflow-y auto,防止整页滚动回归)
+  const overflow = await evalJson(
+    "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
+      " return { overflowY: pane ? getComputedStyle(pane).overflowY : null }; })()",
+  );
+  expect("激活 pane 为滚动容器(overflow-y auto)", overflow.overflowY, "auto");
+
+  // 探针滚动验证:注入超高元素后 scrollTop 必须生效(内容不超高时 scrollTop 会被钳制为 0,故先垫高)
+  const probe = await evalJson(
+    "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
+      " if (!pane) return { ok: false };" +
+      " const filler = document.createElement('div'); filler.style.height = '3000px';" +
+      " pane.appendChild(filler);" +
+      " pane.scrollTop = 100; const scrolled = pane.scrollTop;" +
+      " pane.removeChild(filler); pane.scrollTop = 0;" +
+      " return { ok: true, scrolled }; })()",
+  );
+  expect("pane 滚动生效(探针 scrollTop=100)", probe.scrolled, 100);
 }
 
 /**
@@ -672,7 +721,7 @@ async function flow8LayoutSwitch() {
  */
 async function main() {
   await preflight();
-  console.log("[e2e] 启动 dev(child: sub-app-a/sub-app-b → host)…");
+  console.log("[e2e] 启动 dev(child: micro-app-a/micro-app-b/micro-auth → micro-host)…");
   await startDev();
   console.log("[e2e] dev 就绪,重置浏览器基线…");
   await resetBaseline();

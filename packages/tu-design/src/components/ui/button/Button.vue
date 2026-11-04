@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { cn } from "../../../lib/utils";
-import { Slot } from "../slot";
+import { Slot } from "../../../components/ui/slot";
 import { buttonVariants, type ButtonVariants } from "./index";
 
 interface Props {

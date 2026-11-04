@@ -18,6 +18,8 @@ export const appEvents = {
   tabTitle: "host:tab-title",
   /** 子应用 → 主应用:上报侧栏菜单(host 静态注册为兜底,上报后覆盖) */
   menu: "sub:menu",
+  /** 子应用 → 主应用:登录成功上报(授权网关校验通过,host 据此写入用户态并切换视图) */
+  authLogin: "sub:auth-login",
 } as const;
 
 /** host:broadcast 事件 payload */
@@ -78,4 +80,9 @@ export interface MenuReportPayload {
   /** 注册表 app key(来自注入的 props.tab.app) */
   app: string;
   menu: MenuEntry[];
+}
+
+/** sub:auth-login 事件 payload;授权网关校验通过后上报,host 校验 user 非空才写入 */
+export interface AuthLoginPayload {
+  user: { id: string; name: string };
 }

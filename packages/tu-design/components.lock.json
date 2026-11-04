@@ -2,52 +2,60 @@
   "lockfileVersion": 1,
   "packages": {
     "utils": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/lib/utils.ts": "d1f1e0d62cb8d8d1e04c26e14de842d8a151f75812d81b046c65b5d1fe8e4b27"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/lib/utils.ts": "d72fc666c572ed77eb1608da8951362b071ec75d9bb9b062166374556e0e3765"
+      },
+      "relativeImports": true
     },
     "slot": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/slot/Slot.ts": "af86322818c0cadb73ade154bb1b240b25f9d45b3b1eb7a30e8171c1ef5babfe",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/slot/index.ts": "81f91229dd12a535fe406668f03b48d8a43e2b6a8777e3eb23fb279500d6c156"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/slot/Slot.ts": "67259926f8db4726bc7d2b4624094f37c5b7235408fdc298f45b32220845a2a0",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/slot/index.ts": "01cd29833ca916bfcd22e064328f97fa31535f14248fe95aaacddc70786b6fef"
+      },
+      "relativeImports": true
     },
     "button": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/button/Button.vue": "41902993250b89b1093aff55ad52e33ec10818c11a7685798a39a71e707c53f7",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/button/index.ts": "9db719658e1de86ed51a627be4ea8eb7013c94e08e833bf3a639fc7edf3e7ba5"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/button/Button.vue": "a0b3d46e6f32b8cc867ed28937ca52e679f4b1c02e251ad5fd3b0af2d9ccc31f",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/button/index.ts": "7deff556bfb9a6a3d0f5a45c3615089293a6d9f05c006e1f00e0f4069e07fa9d"
+      },
+      "relativeImports": true
     },
     "input": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/input/Input.vue": "71474a240f7f9bdc431e22a5df47415ad9144b97ee7a580b601d516fc850a7c4",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/input/index.ts": "dec84e8e1cd5e152ae456e00a217b167ec403c0eccaead46b755c2c6afda5712"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/input/Input.vue": "30d20c8607f0fc0471dc806cc9f1ef892a6c1bf64ae29a4f29a343679f6682b4",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/input/index.ts": "8665a86b63c86f83387d990529eed76857977150057e809b377bd9d3ba5bb943"
+      },
+      "relativeImports": true
     },
     "card": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/card/Card.vue": "13d5efd796bb9f77444f0f3a4c91949ad05c66afc8e674f7fb4dd4b1c8af50ba",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/card/index.ts": "9acd12612d6fa7dde59177393a433f68b8c4e577b2eca9c22a89d2b2f0eb442e"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/card/Card.vue": "9bb80701db4267bbc8870f169cd7ed7f3eeb5507c1e020eae3cf6ccd700763cd",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/card/index.ts": "1b4b86f851fb122d2b0f2e3486e4af7e4129c5cdadab3d00dc30b3483bad1d3e"
+      },
+      "relativeImports": true
     },
     "overlay-shared": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/overlay-shared/useConfirmPending.ts": "8c384f71690c1fefcb510b9cad7a02b51cb5e24660401d67ff9036e02ffdaa51",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/overlay-shared/useControlledBoolean.ts": "7525b461688d2c16d712449f73f2bd27175c7ee1851bd65c191066b676fb5cae"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/overlay-shared/sandbox.ts": "1750aa8b924c3e77f39cc0c838c65e316f00bd353516673c4592002fec7bfd4c",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/overlay-shared/useConfirmPending.ts": "298b68e5472616695c1c64e03dd62527dfd632d24d54aaceb6e8abe533619b43",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/overlay-shared/useControlledBoolean.ts": "8b03a46a638f9dd3bfbce3135213cd4c0efc175e93d3b608c4a4424280f13bcd"
+      },
+      "relativeImports": true
     },
     "popover": {
-      "version": "0.4.2",
+      "version": "0.5.2",
       "files": {
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/popover/Popover.vue": "e99f7b6640a6e3a0adc44e356ea9478b65bcad410b12153df51b6c7ad632e81a",
-        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/popover/index.ts": "cc37ad3e48788ce7c2a0fc6810f4bd1dfe6c0c123467fe8aebc0095506495f10"
-      }
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/popover/Popover.vue": "8d5c931d623e89ccd52e6459165ebc05cb31e119928b8b00d9a030dd68876b07",
+        "/home/zhuchentong/Projects/test-space/test_40/packages/tu-design/src/components/ui/popover/index.ts": "0de7a2707545faac77ea4403ee18fa1442901eee5a9d32139efc396667dfe18a"
+      },
+      "relativeImports": true
     }
   }
 }

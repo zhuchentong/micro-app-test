@@ -1,6 +1,7 @@
 import { watch } from "vue";
 import type { Pinia } from "pinia";
 import { appEvents } from "@repo/wujie-kit";
+import { keepBusEventAlive } from "@repo/wujie-kit/bus";
 import type { HostStatePayload, SyncBus } from "@repo/wujie-kit";
 import { useThemeStore } from "./stores/theme";
 import { useUserStore } from "./stores/user";
@@ -26,6 +27,9 @@ let rev = 0;
  */
 export function createHostStoreSync(options: { pinia: Pinia; bus: SyncBus }): HostStoreSync {
   const { bus } = options;
+  // 常驻占位订阅:静音 wujie 空订阅告警。启动期 host:state 广播先于子应用订阅,
+  // 空发由握手兜底(见下方 onRequest 注释);wujie $on 按引用去重,重复注册幂等
+  const stopKeepAlive = keepBusEventAlive(bus, appEvents.state);
   const theme = useThemeStore(options.pinia);
   const user = useUserStore(options.pinia);
 
@@ -56,6 +60,7 @@ export function createHostStoreSync(options: { pinia: Pinia; bus: SyncBus }): Ho
     emitSnapshot,
     stop: () => {
       stopWatch();
+      stopKeepAlive();
       bus.$off(appEvents.stateRequest, onRequest);
     },
   };
