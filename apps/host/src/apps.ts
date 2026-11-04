@@ -4,9 +4,13 @@ import type { MicroApp } from "@repo/wujie-kit";
 export type { MenuEntry } from "@repo/wujie-kit";
 import type { MenuEntry } from "@repo/wujie-kit";
 
-/** host 注册表条目:子应用元信息 + 侧栏菜单 */
+import type { LayoutName } from "./stores/layout";
+
+/** host 注册表条目:子应用元信息 + 侧栏菜单 + 布局偏好 */
 export interface HostApp extends MicroApp {
   menu: MenuEntry[];
+  /** 该子应用的默认布局:打开新 Tab 时应用;已有 Tab 之间的激活不改变布局 */
+  defaultLayout: LayoutName;
 }
 
 /**
@@ -20,6 +24,7 @@ export const apps: HostApp[] = [
     name: "子应用 A",
     domain: "http://localhost:7201",
     color: "#5b8ff9",
+    defaultLayout: "workspace",
     menu: [
       { label: "首页", path: "/" },
       { label: "产品", path: "/products" },
@@ -30,6 +35,7 @@ export const apps: HostApp[] = [
     name: "子应用 B",
     domain: "http://localhost:7202",
     color: "#52c41a",
+    defaultLayout: "workspace",
     menu: [
       { label: "首页", path: "/" },
       { label: "通信演示", path: "/about" },

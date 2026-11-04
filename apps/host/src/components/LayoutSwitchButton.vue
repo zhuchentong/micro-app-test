@@ -9,13 +9,19 @@ const layoutStore = useLayoutStore();
 </script>
 
 <template>
-  <button class="layout-switch" type="button" @click="layoutStore.setLayout(target)">
-    {{ label }}
+  <button
+    class="layout-switch"
+    type="button"
+    :aria-label="label"
+    @click="layoutStore.setLayout(target)"
+  >
+    <!-- 默认渲染文案;可传 slot 换成图标内容(aria-label 始终由 label 兜底) -->
+    <slot>{{ label }}</slot>
   </button>
 </template>
 
 <style scoped>
-/* 中性默认外观:与 sider 内 theme-toggle 同级的次要按钮;布局通过 class 覆盖定位与形状 */
+/* 中性默认外观:次要按钮;布局通过 class 覆盖定位与形状 */
 .layout-switch {
   display: inline-flex;
   align-items: center;

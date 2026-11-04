@@ -9,11 +9,14 @@ import LayoutSwitchButton from "../components/LayoutSwitchButton.vue";
 </template>
 
 <style scoped>
-/* 父 scoped 样式命中子组件根元素:覆盖 LayoutSwitchButton 中性默认样式为浮动按钮 */
+/* 父 scoped 样式命中子组件根元素:覆盖 LayoutSwitchButton 中性默认样式为浮动按钮。
+   z-index 必须高于 Workbench.pane-area(blank 下 absolute inset:0 全屏且 DOM 顺序在后,
+   同为 z-index:auto 时后者覆盖前者——fab 会被遮挡导致真实点击无效) */
 .fab {
   position: absolute;
   right: 20px;
   bottom: 20px;
+  z-index: 10;
   padding: 10px 16px;
   border: 1px solid var(--app-accent-soft-border);
   border-radius: 999px;

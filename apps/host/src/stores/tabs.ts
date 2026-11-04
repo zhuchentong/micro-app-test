@@ -228,19 +228,22 @@ export const useTabsStore = defineStore("tabs", {
      * @param page 页面路径
      * @param query 路由查询参数(参与去重键)
      * @param title 可选标题,缺省走 defaultTitle 兜底
+     * @returns 本次是否新建了 Tab(去重命中已有 Tab 时为 false,
+     *          调用方据此决定是否应用子应用默认布局——激活已有 Tab 不改变布局)
      */
     async openTab(
       app: string,
       page: string,
       query?: Record<string, string>,
       title?: string,
-    ): Promise<void> {
+    ): Promise<boolean> {
       if (!registry.some((item) => item.key === app)) {
         console.error(`[tabs] 未注册的子应用: ${app}`);
-        return;
+        return false;
       }
       const id = buildTabKey(app, page, query);
       let tab = this.tabs.find((item) => item.id === id);
+      const created = !tab;
       if (!tab) {
         tab = {
           id,
@@ -255,14 +258,15 @@ export const useTabsStore = defineStore("tabs", {
         this.tabs.push(tab);
       }
       await this.activate(id);
+      return created;
     },
 
     /**
      * 子应用 tabOpen 事件入口(带注册表校验)
      * @param payload 子应用上报的开 Tab 载荷
-     * @returns 转发给 openTab 的激活 promise
+     * @returns 转发给 openTab 的新建标记
      */
-    openFromPayload(payload: TabOpenPayload): Promise<void> {
+    openFromPayload(payload: TabOpenPayload): Promise<boolean> {
       return this.openTab(payload.app, payload.page, payload.query);
     },
 

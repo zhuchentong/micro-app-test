@@ -54,3 +54,31 @@ test("setLayout 忽略未注册的布局名(运行时守卫)", () => {
   expect(layout.current).toBe("workspace");
   expect(localStorageStub.store.has(LAYOUT_STORAGE_KEY)).toBe(false);
 });
+
+test("hasStoredLayout:无持久化记录为 false,合法记录为 true,非法值视为无记录", () => {
+  let layout = useLayoutStore();
+  expect(layout.hasStoredLayout).toBe(false);
+
+  localStorageStub.store.set(LAYOUT_STORAGE_KEY, "blank");
+  setActivePinia(createPinia());
+  layout = useLayoutStore();
+  expect(layout.hasStoredLayout).toBe(true);
+
+  setActivePinia(createPinia());
+  localStorageStub.store.set(LAYOUT_STORAGE_KEY, "bogus");
+  layout = useLayoutStore();
+  expect(layout.current).toBe("workspace");
+  expect(layout.hasStoredLayout).toBe(false);
+});
+
+test("applyAppDefault 仅在新建 Tab 时应用默认布局", () => {
+  const layout = useLayoutStore();
+  layout.setLayout("blank");
+
+  layout.applyAppDefault("workspace", false);
+  expect(layout.current).toBe("blank");
+
+  layout.applyAppDefault("workspace", true);
+  expect(layout.current).toBe("workspace");
+  expect(localStorageStub.store.get(LAYOUT_STORAGE_KEY)).toBe("workspace");
+});

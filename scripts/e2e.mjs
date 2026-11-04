@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * agent-browser 驱动的浏览器 E2E smoke(11 条链路)。
+ * agent-browser 驱动的浏览器 E2E smoke(8 条链路,适配 workspace 布局重设计 v3.1)。
  *
  * 用法: node scripts/e2e.mjs   (或仓库根 `vp run e2e`)
  * 前提: 全局安装 agent-browser(>=0.39);缺失时 fail-fast 并给出安装指引。
@@ -12,31 +12,37 @@
  *      与手动 dev 并行运行时互杀属预期行为。
  *   ③ 基线重置: 清空 localStorage/sessionStorage 后 reload,
  *      保证 wujie-mvp:theme-custom:v1 / wujie-mvp:tabs:v1 不跨运行残留
- *   ④ 11 条链路: host 侧控件原生 click(无 iframe 覆盖);
+ *   ④ 8 条链路: host 侧控件原生 click(无 iframe 覆盖);
  *      子应用侧一律 eval JS click(wujie iframe 覆盖子应用区域,原生点击被
  *      actionability 检查拒绝,实测必须);等待一律 wait --text/--fn,不用固定 sleep;
  *      断言只依赖 eval 返回的 JSON 值(不解析 CLI 文本格式,降低版本漂移风险),
  *      且 eval 表达式内对字段做空值兜底(eval JSON 输出会省略 null 字段)
  *   ⑤ teardown: stop.mjs + agent-browser close(成功失败都执行)
  *
+ * 新布局 DOM 契约(v3.1):
+ *   .tabs-bar(常驻标签栏)> .tab-item(激活含 .tab-item--active,cold 标记冷实例,
+ *   内含 .tab-title/.tab-close);.icon-nav(workspace 图标侧栏)> .nav-item
+ *   (每子应用一个);hover 浮层 .nav-popover > .popover-item(data-menu-index,
+ *   顺序 = 子应用 menus 数组;mouseenter 触发,.nav-popover--open 强制显示);
+ *   .focus-mode(专注模式)/ .breadcrumb / .pane-stage;blank 布局下 .fab 返回、
+ *   .tabs-bar v-show 隐藏、.icon-nav 随 workspace 布局组件卸载消失
+ *
  * 链路与此前人工批准的「smoke 8 用例」口径映射(实测拆分演化):
  *   8 用例 1(host 加载)   → 链路 1、3
  *   8 用例 2(开 Tab)      → 链路 2
- *   8 用例 3(子应用导航)  → 链路 8
- *   8 用例 4(主题切换)    → 链路 4、5
+ *   8 用例 3(子应用导航)  → 链路 5
  *   8 用例 5(store 同步)  → 链路 3
- *   8 用例 6(广播)        → 链路 7
- *   8 用例 7(刷新恢复)    → 链路 9
- *   8 用例 8(关 Tab)      → 链路 10
- *   (链路 6 保活为实测补充,覆盖 wujie alive 核心卖点;
- *    链路 11 布局切换为 host layouts 动态布局实测补充)
+ *   8 用例 7(刷新恢复)    → 链路 6
+ *   8 用例 8(关 Tab)      → 链路 7
+ *   (链路 4 保活为实测补充,覆盖 wujie alive 核心卖点;
+ *    链路 8 布局切换为 host layouts 动态布局实测补充;
+ *    旧链路 4 暗色切换 / 5 accent 预设 / 7 广播随 UI 重设计移除对应入口后删除)
  */
 import { spawn, execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const HOST_URL = "http://localhost:5175";
-const BROADCAST_TEXT = "hello-wujie-broadcast";
 /** 首次冷启动含依赖重优化,就绪轮询给独立长超时(agent-browser 单命令默认 25s) */
 const READY_TIMEOUT_MS = 90_000;
 
@@ -45,14 +51,6 @@ process.env.AGENT_BROWSER_SESSION = "wujie-mvp-e2e";
 let failures = 0;
 let devProcess = null;
 
-/**
- * 以 execFile 执行命令(不经 shell,无引号转义问题)
- *
- * @param {string} cmd 可执行文件
- * @param {string[]} args 参数列表
- * @param {object} [options] 透传 execFile 的选项
- * @returns {Promise<string>} stdout 全文;非零退出时 reject(stderr 优先入错)
- */
 /**
  * 子进程净化环境:剥离 vp run 注入的 fspy 插桩变量。
  * 实测:LD_PRELOAD(fspy ELF)被 Chrome 继承必现 zygote 启动崩溃
@@ -196,19 +194,58 @@ function expect(name, actual, expected) {
 }
 
 /**
- * 点击 host 侧栏菜单。.app-group 顺序 = apps 注册表顺序(sub-a, sub-b),
- * menu-item 顺序 = 各应用菜单数组顺序
+ * 点击图标导航项。.nav-item 顺序 = 子应用注册表顺序(sub-a, sub-b),
+ * 点击即打开该子应用默认页;host 侧无 iframe 覆盖,原生 click 可用
  *
- * @param {number} groupIndex 应用分组下标
- * @param {number} menuIndex 分组内菜单下标
+ * @param {number} index 导航项下标
  * @returns {Promise<Record<string, unknown>>} { clicked: boolean }
  */
-function clickMenuItem(groupIndex, menuIndex) {
+function clickNavItem(index) {
   return evalJson(
-    `(() => { const g = document.querySelectorAll('.app-group')[${groupIndex}];` +
-      ` const btn = g && g.querySelectorAll('.menu-item')[${menuIndex}];` +
-      " if (!btn) return { clicked: false };" +
-      " btn.click(); return { clicked: true }; })()",
+    `(() => { const nav = document.querySelectorAll('.nav-item')[${index}];` +
+      " if (!nav) return { clicked: false };" +
+      " nav.click(); return { clicked: true }; })()",
+  );
+}
+
+/**
+ * 展开 .nav-item 浮层并点击指定菜单项。浮层 hover 触发为异步渲染,分三步:
+ *   ① eval 先清理遗留的强制 open class(避免误点其他应用残留浮层),
+ *      再给目标 .nav-item 派发 mouseenter
+ *   ② waitFn 等待目标 popover-item 出现在已展开浮层内
+ *      (轮询期间补 .nav-popover--open,防浮层被收起)
+ *   ③ eval 点击前再次补 open class(防两次 CLI 往返间收起),保持展开后点击
+ *
+ * @param {number} navIndex .nav-item 下标(子应用注册表顺序)
+ * @param {number} menuIndex 浮层内菜单下标(popover-item 的 data-menu-index)
+ * @returns {Promise<Record<string, unknown>>} { clicked: boolean }
+ */
+async function clickPopoverItem(navIndex, menuIndex) {
+  const triggered = await evalJson(
+    "(() => { document.querySelectorAll('.nav-popover--open')" +
+      ".forEach(p => p.classList.remove('nav-popover--open'));" +
+      ` const nav = document.querySelectorAll('.nav-item')[${navIndex}];` +
+      " if (!nav) return { ok: false };" +
+      " nav.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));" +
+      " return { ok: true }; })()",
+  );
+  if (!triggered.ok) return { clicked: false };
+  await waitFn(
+    "(() => { const p = [...document.querySelectorAll('.nav-popover')]" +
+      ".find(x => x.classList.contains('nav-popover--open'));" +
+      " if (p) p.classList.add('nav-popover--open');" +
+      ` return !!p && [...p.querySelectorAll('.popover-item')].some(x => x.dataset.menuIndex === '${menuIndex}'); })()`,
+    `nav 浮层展开(应用 ${navIndex} 菜单 ${menuIndex})`,
+  );
+  return evalJson(
+    "(() => { const p = [...document.querySelectorAll('.nav-popover')]" +
+      ".find(x => x.classList.contains('nav-popover--open'));" +
+      " if (!p) return { clicked: false };" +
+      " p.classList.add('nav-popover--open');" +
+      " const item = [...p.querySelectorAll('.popover-item')]" +
+      `.find(x => x.dataset.menuIndex === '${menuIndex}');` +
+      " if (!item) return { clicked: false };" +
+      " item.click(); return { clicked: true }; })()",
   );
 }
 
@@ -220,7 +257,7 @@ function clickMenuItem(groupIndex, menuIndex) {
  */
 function clickTabByTitle(keyword) {
   return evalJson(
-    "(() => { const tab = [...document.querySelectorAll('.tab')]" +
+    "(() => { const tab = [...document.querySelectorAll('.tab-item')]" +
       `.find(t => (t.querySelector('.tab-title')?.textContent || '').includes(${JSON.stringify(keyword)}));` +
       " if (!tab) return { clicked: false };" +
       " tab.click(); return { clicked: true }; })()",
@@ -248,22 +285,6 @@ function jsClickInActiveApp(predicateSource) {
 }
 
 /**
- * 当前激活 pane 子应用 shadowRoot 是否包含指定文本
- * (内容检查在页面内完成,只回传布尔,规避 eval JSON 的 null 字段省略)
- *
- * @param {string} keyword 待检查文本
- * @returns {Promise<boolean>} 包含为 true
- */
-function activeAppTextIncludes(keyword) {
-  return evalJson(
-    "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
-      " const el = pane && pane.querySelector('wujie-app');" +
-      " const sr = el && el.shadowRoot;" +
-      ` return !!sr && sr.textContent.includes(${JSON.stringify(keyword)}); })()`,
-  );
-}
-
-/**
  * 等待激活 pane 的子应用 shadowRoot 渲染出指定文本
  *
  * @param {string} keyword 待出现的文本
@@ -277,19 +298,6 @@ function waitAppText(keyword) {
       ` return !!sr && sr.textContent.includes(${JSON.stringify(keyword)}); })()`,
     `子应用渲染 ${keyword}`,
   );
-}
-
-/**
- * 读取根元素 CSS 变量当前值(host 是唯一写入方,变量经继承穿透子应用)
- *
- * @param {string} name 变量名(如 --app-accent)
- * @returns {Promise<string>} trim 后的变量值;未设置时为空串
- */
-async function cssVar(name) {
-  const state = await evalJson(
-    `(() => ({ value: getComputedStyle(document.documentElement).getPropertyValue(${JSON.stringify(name)}).trim() }))()`,
-  );
-  return state.value ?? "";
 }
 
 /**
@@ -370,9 +378,9 @@ async function preflight() {
 
 /**
  * 基线重置:打开 host 后清空 localStorage/sessionStorage 并 reload,
- * 保证主题自定义 token 与 Tab 快照不跨运行残留
+ * 保证 Tab 快照与布局偏好不跨运行残留;图标导航就绪即视为 host 可交互
  *
- * @returns {Promise<void>} 重置完成且侧栏就绪即返回
+ * @returns {Promise<void>} 重置完成且图标导航就绪即返回
  */
 async function resetBaseline() {
   await openWithRetry(HOST_URL);
@@ -381,47 +389,48 @@ async function resetBaseline() {
     "(() => { localStorage.clear(); sessionStorage.clear(); location.reload(); return { cleared: true }; })()",
   );
   await waitLoad("load");
-  await waitFn("document.querySelectorAll('.menu-item').length === 4", "host 侧栏就绪");
+  await waitFn("document.querySelectorAll('.nav-item').length === 2", "host 图标导航就绪");
 }
 
 /**
- * 链路 1:host 加载与侧栏结构(品牌/分组/菜单/主题/广播/日志)
+ * 链路 1:host 加载与新布局骨架(标签栏/图标导航/面包屑/pane 舞台)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
 async function flow1HostLoaded() {
-  console.log("[链路 1] host 加载与侧栏结构");
+  console.log("[链路 1] host 加载与新布局骨架");
   const state = await evalJson(
-    "(() => ({ groups: document.querySelectorAll('.app-group').length," +
-      " menus: document.querySelectorAll('.menu-item').length," +
-      " brand: !!document.querySelector('.brand')," +
-      " themeToggle: !!document.querySelector('.theme-toggle')," +
-      " broadcast: !!document.querySelector('.broadcast input')," +
-      " logs: !!document.querySelector('.logs') }))()",
+    "(() => ({ tabsBar: !!document.querySelector('.tabs-bar')," +
+      " iconNav: !!document.querySelector('.icon-nav')," +
+      " navItems: document.querySelectorAll('.nav-item').length," +
+      " breadcrumb: !!document.querySelector('.breadcrumb')," +
+      " paneStage: !!document.querySelector('.pane-stage') }))()",
   );
-  expect("应用分组 = 2", state.groups, 2);
-  expect("菜单项 = 4", state.menus, 4);
-  expect("品牌标题存在", state.brand, true);
-  expect("主题切换存在", state.themeToggle, true);
-  expect("广播输入存在", state.broadcast, true);
-  expect("消息日志存在", state.logs, true);
+  expect("标签栏 tabs-bar 存在", state.tabsBar, true);
+  expect("图标导航 icon-nav 存在", state.iconNav, true);
+  expect("导航项 = 2(每子应用一个)", state.navItems, 2);
+  expect("面包屑 breadcrumb 存在", state.breadcrumb, true);
+  expect("pane 舞台 pane-stage 存在", state.paneStage, true);
 }
 
 /**
- * 链路 2:菜单开 Tab(sub-a 首页):激活态/地址栏自管/标题回报
+ * 链路 2:图标导航开 Tab(sub-a 首页):激活态/地址栏自管/标题回报
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
 async function flow2OpenTab() {
-  console.log("[链路 2] 菜单开 Tab(sub-a 首页)");
-  const clicked = await clickMenuItem(0, 0);
-  expect("菜单可点击", clicked.clicked, true);
-  await waitFn("document.querySelectorAll('.tab.active').length === 1", "Tab 激活");
+  console.log("[链路 2] 图标导航开 Tab(sub-a 首页)");
+  const clicked = await clickNavItem(0);
+  expect("导航项可点击", clicked.clicked, true);
+  await waitFn(
+    "document.querySelectorAll('.tab-item').length === 1 && !!document.querySelector('.tab-item--active')",
+    "Tab 激活",
+  );
   await waitAppText("实时状态");
   const state = await evalJson(
     "(() => ({ url: location.pathname," +
-      " tabs: document.querySelectorAll('.tab').length," +
-      " activeHome: (document.querySelector('.tab.active .tab-title')?.textContent || '').includes('首页')," +
+      " tabs: document.querySelectorAll('.tab-item').length," +
+      " activeHome: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('首页')," +
       " title: document.title.includes('子应用 A') }))()",
   );
   expect("地址栏自管 /sub-a", state.url, "/sub-a");
@@ -453,62 +462,12 @@ async function flow3RenderAndSync() {
 }
 
 /**
- * 链路 4:暗色切换(--app-bg-page 变量变化 + 子应用 store 实时 dark)
+ * 链路 4:保活(计数 3 → 浮层菜单切 sub-b → 切回计数保留)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
-async function flow4DarkTheme() {
-  console.log("[链路 4] 暗色切换(CSS 变量 + 子应用同步)");
-  const before = await cssVar("--app-bg-page");
-  expect("切换前为亮色 #edf4f9", before, "#edf4f9");
-  await evalJson(
-    "(() => { document.querySelector('.theme-toggle').click(); return { clicked: true }; })()",
-  );
-  await waitFn(
-    "getComputedStyle(document.documentElement).getPropertyValue('--app-bg-page').trim() !== '#edf4f9'",
-    "暗色变量生效",
-  );
-  const state = await evalJson(
-    "(() => ({ bg: getComputedStyle(document.documentElement).getPropertyValue('--app-bg-page').trim()," +
-      " subDark: (() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
-      " const sr = pane && pane.querySelector('wujie-app')?.shadowRoot;" +
-      " return !!sr && sr.textContent.includes('主题dark'); })() }))()",
-  );
-  expect("切换后 --app-bg-page = #0b1e2c", state.bg, "#0b1e2c");
-  expect("子应用 store 同步 dark", state.subDark, true);
-}
-
-/**
- * 链路 5:accent 预设(绿)+ 自定义 token 成组持久化到 localStorage
- *
- * @returns {Promise<void>} 断言结果写入报告
- */
-async function flow5AccentPreset() {
-  console.log("[链路 5] accent 预设(绿) + 自定义 token 持久化");
-  await evalJson(
-    "(() => { const dot = [...document.querySelectorAll('.accent-dot')].find(b => b.title === '绿');" +
-      " if (!dot) return { clicked: false }; dot.click(); return { clicked: true }; })()",
-  );
-  await waitFn(
-    "getComputedStyle(document.documentElement).getPropertyValue('--app-accent').trim() === '#059669'",
-    "accent 变量生效",
-  );
-  const state = await evalJson(
-    "(() => { let keys = 0;" +
-      " try { keys = Object.keys(JSON.parse(localStorage.getItem('wujie-mvp:theme-custom:v1') || '{}')).length; } catch { keys = -1; }" +
-      " return { accent: getComputedStyle(document.documentElement).getPropertyValue('--app-accent').trim(), keys }; })()",
-  );
-  expect("accent = #059669", state.accent, "#059669");
-  expect("4 个成组 token 持久化", state.keys, 4);
-}
-
-/**
- * 链路 6:保活(计数 3 → 切 sub-b → 切回计数保留)
- *
- * @returns {Promise<void>} 断言结果写入报告
- */
-async function flow6KeepAlive() {
-  console.log("[链路 6] 保活(计数 → 切走 → 切回保留)");
+async function flow4KeepAlive() {
+  console.log("[链路 4] 保活(计数 → 切走 → 切回保留)");
   for (let i = 0; i < 3; i += 1) {
     const clicked = await jsClickInActiveApp(
       "el => el.tagName === 'BUTTON' && el.textContent.trim() === '+1'",
@@ -523,10 +482,10 @@ async function flow6KeepAlive() {
       " return !!m && m[1] === '3'; })()",
     "计数到达 3",
   );
-  const toSubB = await clickMenuItem(1, 1);
-  expect("切到 sub-b 通信演示", toSubB.clicked, true);
+  const toSubB = await clickPopoverItem(1, 1);
+  expect("浮层菜单切到 sub-b 通信演示", toSubB.clicked, true);
   await waitFn(
-    "document.querySelectorAll('.tab').length === 2 && location.pathname === '/sub-b/about'",
+    "document.querySelectorAll('.tab-item').length === 2 && location.pathname === '/sub-b/about'",
     "sub-b Tab 激活",
   );
   await waitAppText("通信演示");
@@ -543,38 +502,15 @@ async function flow6KeepAlive() {
 }
 
 /**
- * 链路 7:host 广播 → sub-b 通信演示页接收(host:state 用户同步一并断言)
+ * 链路 5:子应用内导航 → tabOpen 新开 Tab(智能手表 Pro #101)
+ * 入口改走图标导航浮层(sub-a 图标 → data-menu-index=1 「产品」)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
-async function flow7Broadcast() {
-  console.log("[链路 7] host 广播 → sub-b 通信演示页接收");
-  const toSubB = await clickMenuItem(1, 1);
-  expect("激活 sub-b 通信演示 Tab", toSubB.clicked, true);
-  await waitFn("location.pathname === '/sub-b/about'", "sub-b 激活");
-  await ab(["fill", 'input[aria-label="广播内容"]', BROADCAST_TEXT]);
-  await evalJson(
-    "(() => { document.querySelector('.broadcast button').click(); return { sent: true }; })()",
-  );
-  await waitFn(
-    "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
-      " const sr = pane && pane.querySelector('wujie-app')?.shadowRoot;" +
-      ` return !!sr && sr.textContent.includes('收到: ${BROADCAST_TEXT}'); })()`,
-    "sub-b 收到广播",
-  );
-  expect("sub-b 显示广播内容", await activeAppTextIncludes(`收到: ${BROADCAST_TEXT}`), true);
-  expect("sub-b 页面含同步用户", await activeAppTextIncludes("宿主张三"), true);
-}
-
-/**
- * 链路 8:子应用内导航 → tabOpen 新开 Tab(智能手表 Pro #101)
- *
- * @returns {Promise<void>} 断言结果写入报告
- */
-async function flow8TabOpen() {
-  console.log("[链路 8] 子应用内导航 → tabOpen 新开 Tab");
-  const toProducts = await clickMenuItem(0, 1);
-  expect("打开 sub-a 产品 Tab", toProducts.clicked, true);
+async function flow5TabOpen() {
+  console.log("[链路 5] 子应用内导航 → tabOpen 新开 Tab");
+  const toProducts = await clickPopoverItem(0, 1);
+  expect("浮层菜单打开 sub-a 产品 Tab", toProducts.clicked, true);
   await waitFn("location.pathname === '/sub-a/products'", "产品 Tab 激活");
   await waitAppText("产品列表");
   const clicked = await jsClickInActiveApp(
@@ -582,12 +518,12 @@ async function flow8TabOpen() {
   );
   expect("点击产品 智能手表 Pro", clicked.clicked, true);
   await waitFn(
-    "document.querySelectorAll('.tab').length === 4 && location.pathname === '/sub-a/product/101'" +
+    "document.querySelectorAll('.tab-item').length === 4 && location.pathname === '/sub-a/product/101'" +
       " && [...document.querySelectorAll('.tab-title')].some(t => (t.textContent || '').includes('智能手表 Pro #101'))",
     "新 Tab 打开且标题回报",
   );
   const state = await evalJson(
-    "(() => ({ tabs: document.querySelectorAll('.tab').length, url: location.pathname," +
+    "(() => ({ tabs: document.querySelectorAll('.tab-item').length, url: location.pathname," +
       " newTab: [...document.querySelectorAll('.tab-title')].some(t => (t.textContent || '').includes('智能手表 Pro #101')) }))()",
   );
   expect("Tab 数 = 4", state.tabs, 4);
@@ -596,24 +532,24 @@ async function flow8TabOpen() {
 }
 
 /**
- * 链路 9:刷新恢复(sessionStorage 恢复 cold Tab + 激活项重建实例并渲染)
+ * 链路 6:刷新恢复(sessionStorage 恢复 cold Tab + 激活项重建实例并渲染)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
-async function flow9RefreshRestore() {
-  console.log("[链路 9] 刷新恢复(sessionStorage → cold → 激活重建)");
+async function flow6RefreshRestore() {
+  console.log("[链路 6] 刷新恢复(sessionStorage → cold → 激活重建)");
   await openWithRetry(`${HOST_URL}/sub-a/product/101`);
   await waitLoad("load");
   await waitFn(
-    "(() => { const t = document.querySelector('.tab.active');" +
-      " return !!t && t.classList.contains('cold') === false; })()",
+    "(() => { const t = document.querySelector('.tab-item--active');" +
+      " return !!t && !t.classList.contains('cold'); })()",
     "激活 Tab 重建完成",
   );
   await waitAppText("智能手表 Pro");
   const state = await evalJson(
-    "(() => ({ total: document.querySelectorAll('.tab').length," +
-      " cold: document.querySelectorAll('.tab.cold').length," +
-      " activeNotCold: (() => { const t = document.querySelector('.tab.active');" +
+    "(() => ({ total: document.querySelectorAll('.tab-item').length," +
+      " cold: document.querySelectorAll('.tab-item.cold').length," +
+      " activeNotCold: (() => { const t = document.querySelector('.tab-item--active');" +
       " return !!t && !t.classList.contains('cold'); })()," +
       " url: location.pathname," +
       " detail: (() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
@@ -628,25 +564,25 @@ async function flow9RefreshRestore() {
 }
 
 /**
- * 链路 10:关闭激活 Tab → 左邻 Tab 接管激活且地址栏同步
+ * 链路 7:关闭激活 Tab → 左邻 Tab 接管激活且地址栏同步
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
-async function flow10CloseTab() {
-  console.log("[链路 10] 关闭激活 Tab → 相邻接管");
+async function flow7CloseTab() {
+  console.log("[链路 7] 关闭激活 Tab → 相邻接管");
   const closed = await evalJson(
-    "(() => { const active = document.querySelector('.tab.active');" +
+    "(() => { const active = document.querySelector('.tab-item--active');" +
       " const close = active && active.querySelector('.tab-close');" +
       " if (!close) return { clicked: false }; close.click(); return { clicked: true }; })()",
   );
   expect("关闭按钮可点击", closed.clicked, true);
   await waitFn(
-    "document.querySelectorAll('.tab').length === 3 && location.pathname === '/sub-a/products'",
+    "document.querySelectorAll('.tab-item').length === 3 && location.pathname === '/sub-a/products'",
     "相邻 Tab 接管",
   );
   const state = await evalJson(
-    "(() => ({ total: document.querySelectorAll('.tab').length, url: location.pathname," +
-      " activeProduct: (document.querySelector('.tab.active .tab-title')?.textContent || '').includes('产品') }))()",
+    "(() => ({ total: document.querySelectorAll('.tab-item').length, url: location.pathname," +
+      " activeProduct: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('产品') }))()",
   );
   expect("Tab 数 = 3", state.total, 3);
   expect("地址栏同步 /sub-a/products", state.url, "/sub-a/products");
@@ -654,15 +590,16 @@ async function flow10CloseTab() {
 }
 
 /**
- * 链路 11:layouts 动态布局(workspace ↔ blank)
- * chrome 层切换(sider 卸载/浮动按钮挂载),wujie 容器层常驻:
- * 保活实例穿越布局切换与 blank 下刷新不重载,布局偏好 localStorage 持久化跨刷新恢复
+ * 链路 8:layouts 动态布局(workspace ↔ blank)
+ * chrome 层切换(icon-nav 随 workspace 布局卸载/tabs-bar v-show 隐藏/fab 挂载),
+ * wujie 容器层常驻:保活实例穿越布局切换与 blank 下刷新不重载,
+ * 布局偏好 localStorage 持久化跨刷新恢复
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
-async function flow11LayoutSwitch() {
-  console.log("[链路 11] 布局切换(workspace ↔ blank)+ 保活 + 持久化");
-  // flow10 刚把激活权交给 cold 的产品 Tab:实例异步重建中,先等渲染就绪再切布局
+async function flow8LayoutSwitch() {
+  console.log("[链路 8] 布局切换(workspace ↔ blank)+ 保活 + 持久化");
+  // flow7 刚把激活权交给 cold 的产品 Tab:实例异步重建中,先等渲染就绪再切布局
   await waitAppText("产品列表");
   const toBlank = await evalJson(
     "(() => { const btn = document.querySelector('.focus-mode');" +
@@ -670,19 +607,21 @@ async function flow11LayoutSwitch() {
   );
   expect("专注模式按钮可点击", toBlank.clicked, true);
   await waitFn(
-    "!document.querySelector('.sider') && !!document.querySelector('.fab')" +
+    "!document.querySelector('.icon-nav') && !!document.querySelector('.fab')" +
       " && localStorage.getItem('wujie-mvp:layout:v1') === 'blank'",
-    "切换到 blank(sider 卸载、浮动按钮挂载、偏好落盘)",
+    "切换到 blank(icon-nav 卸载、浮动按钮挂载、偏好落盘)",
   );
   const blankState = await evalJson(
     "(() => { const bar = document.querySelector('.tabs-bar');" +
       " const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
       " const sr = pane && pane.querySelector('wujie-app')?.shadowRoot;" +
-      " return { tabsBarHidden: !!bar && bar.style.display === 'none'," +
-      " tabs: document.querySelectorAll('.tab').length," +
+      " return { tabsBarHidden: !!bar && getComputedStyle(bar).display === 'none'," +
+      " iconNavGone: !document.querySelector('.icon-nav')," +
+      " tabs: document.querySelectorAll('.tab-item').length," +
       " alive: !!sr && sr.textContent.includes('产品列表') }; })()",
   );
-  expect("tabs-bar 隐藏(v-show)", blankState.tabsBarHidden, true);
+  expect("tabs-bar 隐藏(v-show,按计算样式)", blankState.tabsBarHidden, true);
+  expect("icon-nav 随 workspace 布局卸载", blankState.iconNavGone, true);
   expect("Tab 列表穿越布局切换保留", blankState.tabs, 3);
   expect("保活实例仍在渲染(产品列表)", blankState.alive, true);
 
@@ -690,16 +629,28 @@ async function flow11LayoutSwitch() {
   await openWithRetry(`${HOST_URL}/sub-a/products`);
   await waitLoad("load");
   await waitFn(
-    "!!document.querySelector('.fab') && !document.querySelector('.sider')" +
+    "!!document.querySelector('.fab') && !document.querySelector('.icon-nav')" +
       " && localStorage.getItem('wujie-mvp:layout:v1') === 'blank'",
     "刷新后保持 blank 布局",
   );
   await waitFn(
-    "(() => { const t = document.querySelector('.tab.active');" +
-      " return document.querySelectorAll('.tab').length === 3 && !!t && !t.classList.contains('cold'); })()",
+    "(() => { const t = document.querySelector('.tab-item--active');" +
+      " return document.querySelectorAll('.tab-item').length === 3 && !!t && !t.classList.contains('cold'); })()",
     "blank 下刷新 Tab 恢复且激活实例重建",
   );
   await waitAppText("产品列表");
+
+  // hit-test:fab 中心点必须命中按钮自身(而非覆盖层)——eval JS click 不做 hit-test,
+  // 无法发现 pane-area 等 absolute 层遮挡 fab 的回归,这里程序化验证真实鼠标路径
+  const fabHit = await evalJson(
+    "(() => { const fab = document.querySelector('.fab');" +
+      " if (!fab) return { hit: false, target: 'missing' };" +
+      " const r = fab.getBoundingClientRect();" +
+      " const el = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);" +
+      " return { hit: !!el && (el === fab || fab.contains(el))," +
+      " target: el ? el.tagName.toLowerCase() + '.' + (el.className.baseVal ?? el.className) : null }; })()",
+  );
+  expect("返回工作台按钮未被遮挡(hit-test)", fabHit.hit, true);
 
   const backToWorkspace = await evalJson(
     "(() => { const fab = document.querySelector('.fab');" +
@@ -707,15 +658,15 @@ async function flow11LayoutSwitch() {
   );
   expect("返回工作台按钮可点击", backToWorkspace.clicked, true);
   await waitFn(
-    "!!document.querySelector('.sider')" +
-      " && (() => { const bar = document.querySelector('.tabs-bar'); return !!bar && bar.style.display !== 'none'; })()" +
+    "!!document.querySelector('.icon-nav')" +
+      " && (() => { const bar = document.querySelector('.tabs-bar'); return !!bar && getComputedStyle(bar).display !== 'none'; })()" +
       " && localStorage.getItem('wujie-mvp:layout:v1') === 'workspace'",
-    "切回 workspace(sider 挂载、tabs-bar 恢复)",
+    "切回 workspace(icon-nav 挂载、tabs-bar 恢复)",
   );
 }
 
 /**
- * 主流程:前置检查 → 启动 dev → 基线重置 → 顺序执行 11 条链路 → 汇总
+ * 主流程:前置检查 → 启动 dev → 基线重置 → 顺序执行 8 条链路 → 汇总
  *
  * @returns {Promise<void>} 进程退出码由断言结果决定(0/1)
  */
@@ -729,21 +680,18 @@ async function main() {
   await flow1HostLoaded();
   await flow2OpenTab();
   await flow3RenderAndSync();
-  await flow4DarkTheme();
-  await flow5AccentPreset();
-  await flow6KeepAlive();
-  await flow7Broadcast();
-  await flow8TabOpen();
-  await flow9RefreshRestore();
-  await flow10CloseTab();
-  await flow11LayoutSwitch();
+  await flow4KeepAlive();
+  await flow5TabOpen();
+  await flow6RefreshRestore();
+  await flow7CloseTab();
+  await flow8LayoutSwitch();
 
   if (failures > 0) {
     console.error(`\n[e2e] 结果: ${failures} 个断言失败`);
     process.exitCode = 1;
     return;
   }
-  console.log("\n[e2e] 结果: 11 条链路全部通过");
+  console.log("\n[e2e] 结果: 8 条链路全部通过");
 }
 
 try {

@@ -1,66 +1,52 @@
 <script setup lang="ts">
 defineOptions({ name: "HostWorkbench" });
+import { computed } from "vue";
 import { useTabsStore } from "./stores/tabs";
-import { useLogsStore } from "./stores/logs";
+import { useLayoutStore } from "./stores/layout";
+import { layouts } from "./layouts";
 
-/** 常驻内容层:tabs-bar 显隐由当前布局声明,pane 区(含 wujie 容器)永不随布局卸载 */
-defineProps<{ showTabsBar: boolean }>();
-
+/** 常驻容器层:pane-area(含 wujie 容器)永不随布局卸载/移动,视觉层(衬底卡)由 meta 显隐 */
 const tabs = useTabsStore();
-const logs = useLogsStore();
+const layoutStore = useLayoutStore();
 
-/**
- * 关闭 Tab:先移除记录再销毁实例(见 tabs store),日志记录关闭动作
- * @param id 待关闭 Tab 的确定性去重键
- */
-async function closeTab(id: string): Promise<void> {
-  const title = tabs.tabs.find((tab) => tab.id === id)?.title ?? id;
-  await tabs.closeTab(id);
-  logs.add("host", `关闭 Tab · ${title}`);
-}
+/** 当前布局 meta:直接从 store 读,不层层传 props */
+const meta = computed(() => layouts[layoutStore.current].meta);
 </script>
 
 <template>
   <section class="workbench">
-    <div v-show="showTabsBar" class="tabs-bar" role="tablist">
-      <!-- Tab 用 div role=tab:内部需要嵌套真关闭按钮,button 嵌套 button 属无效 HTML(lint 强制) -->
-      <div
-        v-for="tab in tabs.tabs"
-        :key="tab.id"
-        class="tab"
-        :class="{ active: tab.id === tabs.activeId, cold: tab.state === 'cold' }"
-        role="tab"
-        :aria-selected="tab.id === tabs.activeId"
-        tabindex="0"
-        @click="tabs.activate(tab.id)"
-        @keydown.enter.prevent="tabs.activate(tab.id)"
-        @keydown.space.prevent="tabs.activate(tab.id)"
-      >
-        <span class="tab-title">{{ tab.title }}</span>
-        <span v-if="tab.state === 'cold'" class="reload-hint" title="实例已释放,激活时重建">↻</span>
-        <button
-          class="tab-close"
-          type="button"
-          :aria-label="`关闭 Tab · ${tab.title}`"
-          @click.stop="closeTab(tab.id)"
-          @keydown.stop
-        >×</button>
-      </div>
-      <span v-if="tabs.tabs.length === 0" class="tabs-placeholder">点击左侧菜单打开子应用页面</span>
+    <div v-show="meta.showBreadcrumb" class="breadcrumb">
+      <span class="breadcrumb-root">工作台</span>
+      <template v-if="tabs.activeTab">
+        <span aria-hidden="true" class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">{{ tabs.activeTab.title }}</span>
+      </template>
     </div>
 
-    <div class="pane-area">
-      <!-- 每 Tab 一个常驻容器,保活实例不卸载,切换只切显隐;任何布局变化都不得触碰本层 -->
+    <div class="pane-stage" :class="{ 'stage--framed': meta.framed }">
+      <!-- ① 衬底视觉层:仅装饰,可随布局显隐 -->
+      <div v-show="meta.framed" aria-hidden="true" class="pane-frame" />
+      <!-- ② 内白卡视觉层:空态只有衬底(「未加载子应用」语义) -->
       <div
-        v-for="tab in tabs.tabs"
-        v-show="tab.id === tabs.activeId"
-        :id="`tab-container-${tab.n}`"
-        :key="tab.id"
-        class="tab-pane"
+        v-show="meta.framed && tabs.tabs.length > 0"
+        aria-hidden="true"
+        class="pane-frame-inner"
       />
-      <div v-if="!tabs.activeTab" class="empty-state">
-        <p>未打开任何页面</p>
-        <p class="empty-hint">打开任意子应用页面开始使用</p>
+
+      <!-- ③ 容器层:常驻永不隐藏;--stage-inset 由 .stage--framed 切换(衬底留白 vs 全屏) -->
+      <div class="pane-area">
+        <!-- 每 Tab 一个常驻容器,保活实例不卸载,切换只切显隐;任何布局变化都不得触碰本层 -->
+        <div
+          v-for="tab in tabs.tabs"
+          v-show="tab.id === tabs.activeId"
+          :id="`tab-container-${tab.n}`"
+          :key="tab.id"
+          class="tab-pane"
+        />
+        <div v-if="!tabs.activeTab" class="empty-state">
+          <p>未打开任何页面</p>
+          <p class="empty-hint">打开任意子应用页面开始使用</p>
+        </div>
       </div>
     </div>
   </section>
@@ -72,98 +58,68 @@ async function closeTab(id: string): Promise<void> {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 14px;
 }
 
-.tabs-bar {
+.breadcrumb {
   flex: none;
+  height: 44px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px 0;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--app-border);
-  background: var(--app-bg-surface);
-}
-
-.tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
+  gap: 8px;
+  padding: 0 16px;
   border: 1px solid var(--app-border);
-  border-bottom: none;
-  border-radius: 8px 8px 0 0;
-  background: var(--app-bg-tab-inactive);
-  color: var(--app-text-1);
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.tab:focus-visible {
-  outline: 2px solid var(--app-accent);
-  outline-offset: -2px;
-}
-
-.tab:hover {
-  background: var(--app-accent-soft);
-}
-
-.tab.active {
+  border-radius: var(--app-radius-lg);
   background: var(--app-bg-raised);
-  border-color: var(--app-accent-soft-border);
-  color: var(--app-accent);
+  font-size: var(--app-fs-caption);
+}
+
+.breadcrumb-root {
+  color: var(--app-text-2);
+}
+
+.breadcrumb-sep {
+  color: var(--app-text-3);
+}
+
+.breadcrumb-current {
+  color: var(--app-text-1);
   font-weight: 600;
 }
 
-.tab.cold {
-  opacity: 0.7;
-  border-style: dashed;
-}
-
-.tab-title {
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.reload-hint {
-  font-size: 12px;
-  color: var(--app-text-3);
-}
-
-.tab-close {
-  padding: 0 2px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--app-text-3);
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tab-close:focus-visible {
-  outline: 2px solid var(--app-accent);
-  outline-offset: 1px;
-}
-
-.tab-close:hover {
-  background: var(--app-destructive-soft);
-  color: var(--app-destructive);
-}
-
-.tabs-placeholder {
-  padding: 7px 4px;
-  font-size: 13px;
-  color: var(--app-text-3);
-}
-
-.pane-area {
+.pane-stage {
+  position: relative;
   flex: 1;
   min-height: 0;
-  position: relative;
+  /* 容器层默认贴满 stage;衬底模式下留 12px 空隙露出衬底卡 */
+  --stage-inset: 0px;
+}
+
+.pane-stage.stage--framed {
+  --stage-inset: 12px;
+}
+
+/* ① 衬底视觉层 */
+.pane-frame {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--app-border);
+  border-radius: 20px;
+  background: var(--app-bg-surface);
+}
+
+/* ② 内白卡视觉层 */
+.pane-frame-inner {
+  position: absolute;
+  inset: 12px;
+  border-radius: var(--app-radius-lg);
+  background: var(--app-bg-raised);
+}
+
+/* ③ 容器层:常驻,只切 inset 不切显隐 */
+.pane-area {
+  position: absolute;
+  inset: var(--stage-inset);
 }
 
 .tab-pane {
@@ -188,6 +144,7 @@ async function closeTab(id: string): Promise<void> {
 }
 
 .empty-hint {
-  font-size: 13px;
+  font-size: 12px;
+  color: var(--app-text-3);
 }
 </style>

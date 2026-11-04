@@ -93,6 +93,16 @@ test("openTab 同参数确定性去重:复用记录与实例", async () => {
   expect(ensured).toHaveLength(1);
 });
 
+test("openTab 返回新建标记:首次 true,去重复用 false,未注册 false", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  expect(await tabs.openTab("sub-a", "/products")).toBe(true);
+  expect(await tabs.openTab("sub-a", "/products")).toBe(false);
+  expect(await tabs.openTab("nope", "/")).toBe(false);
+});
+
 test("openTab query 不同则是不同 Tab;未注册 app 被拒绝", async () => {
   const { ops, ensured } = createFakeOps();
   configureTabOps(ops, apps);
