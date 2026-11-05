@@ -8,6 +8,7 @@
  *   node scripts/dev.mjs --all          # 启动全部应用(跳过交互)
  *   node scripts/dev.mjs <名字...>       # 直达模式，跳过交互(名字含宿主即含宿主)
  *   node scripts/dev.mjs --host 0.0.0.0 # 全网卡监听并打印局域网分享地址(--host 语义同 vite)
+ *   node scripts/dev.mjs --allow-lan    # 等价裸 --host(监听所有地址)并打印局域网分享地址
  *
  * --host 转发给各 app 的 vp dev(无值 = 监听所有地址);裸 --host 紧跟已知应用名时
  * 按位置参数处理(应用名与主机名空间不相交,无歧义):
@@ -172,6 +173,7 @@ function fuzzyMatch(search, text) {
 
 // ---------- 选择 ----------
 // --host 转发给各 app 的 vp dev(vite 语义:无值 = 监听所有地址),其余 - 开头选项不支持。
+// --allow-lan 为布尔开关,解析完成后等价注入裸 --host(显式 --host 优先,不覆盖其值)。
 // 裸 --host 在 vite 语义下会吞掉紧跟的 token;此处当下一 token 是已知应用名时按位置参数处理:
 //   nr dev --host micro-app-a ≡ nr dev micro-app-a --host
 const args = process.argv.slice(2);
@@ -179,10 +181,13 @@ const hostArgs = [];
 const nameArgs = [];
 const badArgs = [];
 let allFlag = false;
+let allowLan = false;
 for (let i = 0; i < args.length; i++) {
   const arg = args[i];
   if (arg === "--all") {
     allFlag = true;
+  } else if (arg === "--allow-lan") {
+    allowLan = true; // 布尔开关,不消费下一 token,不影响位置参数(应用名)解析
   } else if (arg === "--host") {
     const next = args[i + 1];
     if (next !== undefined && !next.startsWith("-") && knownNames.has(next)) {
@@ -200,6 +205,10 @@ for (let i = 0; i < args.length; i++) {
   } else {
     nameArgs.push(arg);
   }
+}
+// --allow-lan 是裸 --host 的便捷别名;已显式给出 --host(裸或有值)时不重复注入
+if (allowLan && !hostArgs.includes("--host")) {
+  hostArgs.push("--host");
 }
 if (badArgs.length > 0) {
   console.error(`[dev] 不支持的选项:${badArgs.join(" ")}`);
