@@ -6,6 +6,7 @@ import type {
   BroadcastPayload,
   MenuEntry,
   MenuReportPayload,
+  TabNavigatePayload,
   TabOpenPayload,
   TabRoutePayload,
   TabTitlePayload,
@@ -35,12 +36,21 @@ export interface SubBus {
   lastBroadcast: Ref<string>;
   /** 注册广播监听(内部幂等,避免 remount 重复注册) */
   registerBroadcastListener(): void;
+  /**
+   * 注册 host→child 的 Tab 纠偏导航监听(host:tab-navigate)。
+   * host 纠偏漂移记录后,已保活实例经此按载荷 (page, query) 跳转路由,内容回到记录身份。
+   * 内部幂等(重复注册只挂一个监听);payload 定向过滤本 Tab;非 wujie 环境无操作。
+   */
+  registerTabNavigateHandler(handler: (page: string, query?: Record<string, string>) => void): void;
   /** 子应用 → 主应用:发送通知 */
   notifyHost(text: string): void;
   /** 子应用 → 主应用:同步标题(单容器模式遗留;Tab 模式用 syncTabTitle) */
   syncTitle(title: string): void;
-  /** 子应用 → 主应用:请求打开 Tab(幂等,同参数复用;非 wujie 环境无操作) */
-  openTab(page: string, query?: Record<string, string>): void;
+  /**
+   * 子应用 → 主应用:请求打开 Tab(幂等,同参数复用;tabOpen 事件 fire-and-forget)
+   * @returns true = 已向宿主发出请求;false = 未嵌入宿主(无 Tab 身份),调用方可回退本地路由
+   */
+  openTab(page: string, query?: Record<string, string>): boolean;
   /** 子应用 → 主应用:回报当前 Tab 内路由(替代 sync;query 可直接传 useRoute().query;非 wujie 环境无操作) */
   syncTabRoute(page: string, query?: RouteQuery): void;
   /** 子应用 → 主应用:回报 Tab 标题(host 仅信任激活 Tab;非 wujie 环境无操作) */
@@ -62,7 +72,7 @@ function currentTab(): NonNullable<HostProps["tab"]> | null {
 }
 
 /** vue-router 的 query 值形态(结构化匹配,避免本包依赖 vue-router) */
-type RouteQuery = Record<string, string | (string | null)[] | null> | undefined;
+export type RouteQuery = Record<string, string | (string | null)[] | null> | undefined;
 
 /**
  * Tab 内 query 上报前的规整(仅保留字符串值,多值 query 取最近一次)
@@ -88,6 +98,7 @@ function normalizeQuery(query: RouteQuery): Record<string, string> | undefined {
 export function createSubBus(config: SubAppConfig): SubBus {
   const lastBroadcast = ref("");
   let broadcastRegistered = false;
+  let tabNavigateRegistered = false;
 
   return {
     lastBroadcast,
@@ -101,17 +112,32 @@ export function createSubBus(config: SubAppConfig): SubBus {
       });
       broadcastRegistered = true;
     },
+    registerTabNavigateHandler(
+      handler: (page: string, query?: Record<string, string>) => void,
+    ): void {
+      if (tabNavigateRegistered) return;
+      // 非 wujie 环境(独立直访/node 测试)无 bus:直接返回,不锁定幂等标志
+      const bus = window.$wujie?.bus;
+      if (!bus) return;
+      bus.$on(appEvents.tabNavigate, (payload?: TabNavigatePayload) => {
+        // 定向过滤:仅本 Tab 的纠偏生效(多实例保活下全实例都在监听)
+        if (!payload || payload.id !== currentTab()?.id) return;
+        handler(payload.page, payload.query);
+      });
+      tabNavigateRegistered = true;
+    },
     notifyHost(text: string): void {
       window.$wujie?.bus?.$emit(appEvents.notify, { from: config.name, text });
     },
     syncTitle(title: string): void {
       window.$wujie?.bus?.$emit(appEvents.title, title);
     },
-    openTab(page: string, query?: Record<string, string>): void {
+    openTab(page: string, query?: Record<string, string>): boolean {
       const tab = currentTab();
-      if (!tab) return;
+      if (!tab) return false;
       const payload: TabOpenPayload = { app: tab.app, page, query };
       window.$wujie?.bus?.$emit(appEvents.tabOpen, payload);
+      return true;
     },
     syncTabRoute(page: string, query?: RouteQuery): void {
       const tab = currentTab();
@@ -134,6 +160,44 @@ export function createSubBus(config: SubAppConfig): SubBus {
     reportLogin(user: { id: string; name: string }): void {
       const payload: AuthLoginPayload = { user: { ...user } };
       window.$wujie?.bus?.$emit(appEvents.authLogin, payload);
+    },
+  };
+}
+
+/** 最小 router 形状(结构化匹配,保持本包不依赖 vue-router,同 RouteQuery 先例) */
+export interface SubRouter {
+  push(location: { path: string; query?: RouteQuery }): unknown;
+}
+
+/** createAppBus 产物:页面导航入口 + 底层 bus 能力集合 */
+export interface SubAppBus {
+  subBus: SubBus;
+  /**
+   * 页面导航入口:请求宿主开新 Tab(幂等,同参数复用);未嵌入宿主(独立直访/无 Tab 身份)
+   * 时回退本应用内路由。列表页打开实体用本方法;当前 Tab 内续跳直接用 router.push。
+   */
+  openTab(page: string, query?: Record<string, string>): void;
+}
+
+/**
+ * 子应用 bus 组合根工厂:单例 bus + host 纠偏接线(有 router 时) + 导航约定。
+ * 每个 app 在 src/bus.ts 以模块级单例调用一次(页面共享同一 lastBroadcast 与监听状态),
+ * 解构导出 subBus 与 openTab 供页面使用。
+ * @param config 子应用配置(至少提供 name 作为消息来源标识)
+ * @param router 应用 vue-router 实例(结构化按 SubRouter 匹配);缺省时不接纠偏、回退无效
+ * @returns SubAppBus
+ */
+export function createAppBus(config: SubAppConfig, router?: SubRouter): SubAppBus {
+  const subBus = createSubBus(config);
+  if (router) {
+    // host 纠偏漂移 Tab 时(host:tab-navigate),按载荷跳路由,内容回到记录身份
+    subBus.registerTabNavigateHandler((page, query) => void router.push({ path: page, query }));
+  }
+  return {
+    subBus,
+    openTab(page, query) {
+      if (subBus.openTab(page, query)) return; // 已向宿主发出开 Tab 请求
+      if (router) void router.push({ path: page, query }); // 未嵌入宿主:页内回退
     },
   };
 }

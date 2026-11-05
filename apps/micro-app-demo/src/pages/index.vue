@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
 import { useUserStore } from "@repo/store";
 import { PageContainer } from "@repo/share/ui/PageContainer";
+import { openTab } from "../bus";
 
 // props 是 startApp 时注入的一次性快照,此后不再更新
 const props = useHostProps();
@@ -23,13 +24,15 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
           </li>
           <li>
             <strong>TableLayout(全高填充)</strong>:
-            <RouterLink :to="{ name: 'table' }">表格页示例</RouterLink>
-            —— 工具栏 / 表格区 / 底部分页区,表格区内滚,tu-design 组件走 auto-import。
+            <Button type="button" variant="ghost" @click="openTab('/table')">表格页示例</Button>
+            —— 工具栏 / 表格区 / 底部分页区,表格区内滚,tu-design 组件走 auto-import;
+            宿主内新开 Tab,独立运行回退本页跳转。
           </li>
           <li>
             <strong>FormLayout(全高填充)</strong>:
-            <RouterLink :to="{ name: 'form' }">表单页示例</RouterLink>
-            —— flex 常驻底部操作栏,tu-design 组件走显式 import。
+            <Button type="button" variant="ghost" @click="openTab('/form')">表单页示例</Button>
+            —— flex 常驻底部操作栏,tu-design 组件走显式 import;
+            宿主内新开 Tab,独立运行回退本页跳转。
           </li>
         </ul>
       </section>

@@ -1,13 +1,23 @@
 <script setup lang="ts">
 import { watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@repo/store";
 import { appConfig } from "./app.config";
 import { subBus } from "./bus";
 
 const route = useRoute();
+const router = useRouter();
 
 const userStore = useUserStore();
+
+/**
+ * 头部导航 active:复刻 RouterLink 前缀匹配语义(to path 为当前 path 前缀即命中,'/' 恒 active)
+ * @param path 导航目标 path
+ * @returns 当前路由是否命中该导航前缀
+ */
+function navActive(path: string): boolean {
+  return route.path.startsWith(path);
+}
 
 // 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
 if (appConfig.menu) subBus.reportMenu(appConfig.menu);
@@ -36,8 +46,21 @@ watch(
       <strong>{{ appConfig.name }}</strong>
       <span class="user">👤 {{ userStore.user.name }}</span>
       <nav>
-        <RouterLink :to="{ name: 'home' }">首页</RouterLink>
-        <RouterLink :to="{ name: 'about' }">通信演示</RouterLink>
+        <!-- 非锚点导航:wujie shadow 内 <a> href 会被绝对化到子应用 origin,修饰键/中键点击会跳出宿主 -->
+        <button
+          type="button"
+          :class="{ active: navActive('/') }"
+          @click="router.push({ name: 'home' })"
+        >
+          首页
+        </button>
+        <button
+          type="button"
+          :class="{ active: navActive('/about') }"
+          @click="router.push({ name: 'about' })"
+        >
+          通信演示
+        </button>
       </nav>
     </header>
 
@@ -77,13 +100,16 @@ nav {
   margin-left: auto;
 }
 
-nav a {
+nav button {
   color: var(--app-text-2);
-  text-decoration: none;
   font-size: 14px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
 }
 
-nav a.router-link-active {
+nav button.active {
   color: var(--app-text-1);
   font-weight: 600;
 }

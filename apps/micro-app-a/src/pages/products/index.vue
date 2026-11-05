@@ -1,24 +1,13 @@
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
-import { subBus } from "../../bus";
+import { openTab } from "../../bus";
 import { products } from "../../mock/products";
 
-const router = useRouter();
-const hostProps = useHostProps();
-
 /**
- * 点击产品:Tab 模式经 bus 请求主应用开新 Tab(幂等,同参数复用);
- * 独立运行时直接本页跳转详情。
+ * 点击产品:宿主内新开 Tab(幂等,同参复用);独立运行回退本页跳转详情。
  * @param id 产品 id
  */
 function openProduct(id: string): void {
-  const page = `/products/${id}`;
-  if (isWujie() && hostProps?.tab) {
-    subBus.openTab(page);
-    return;
-  }
-  void router.push(page);
+  openTab(`/products/${id}`);
 }
 </script>
 

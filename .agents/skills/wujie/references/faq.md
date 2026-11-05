@@ -41,6 +41,13 @@
 - **解决**：只保留一种同步方式
 - **Issue**：#328
 
+### 子应用内 `<a>`/RouterLink 点击跳出宿主
+
+- **现象**：宿主内点击子应用页面链接，浏览器整页跳到子应用独立端口地址（如 `http://localhost:7204/table`）；检查元素见 `href` 被改写为子应用 origin 绝对地址；Ctrl+点击/中键/右键"新标签打开"必现
+- **原因**：shadow 模式子应用 DOM 物理位于主应用文档，相对 `href` 会被主应用 origin 错误解析，wujie 经 `fixElementCtrSrcOrHref`（`esm/iframe.js`）补丁把 `A[href]` 绝对化到子应用 origin；锚点随 DOM 落在主应用文档，任何原生锚点导航路径都会把顶层窗口带离宿主（vue-router 的 `guardEvent` 对修饰键/新窗口场景故意放行）
+- **解决**：子应用内导航不依赖原生 `<a>` 默认行为——当前 Tab 内跳转用 `router.push`（按钮 + click 处理器），跨 Tab 打开用 `createAppBus` 产物的 `openTab`（未嵌入宿主自动回退 push）；已渲染的 `<a>` 即使加 `@click.prevent` 也挡不住修饰键默认导航，须换成非锚点元素
+- **来源**：本仓库实测定位（wujie 2.1.0 + vue-router 5.x 源码）
+
 ---
 
 ## 接入与跨域

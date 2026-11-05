@@ -1,5 +1,6 @@
 import { expect, expectTypeOf, test } from "vite-plus/test";
 import { appEvents } from "../events.ts";
+import type { TabNavigatePayload } from "../events.ts";
 import {
   buildTabKey,
   buildTabUrl,
@@ -9,7 +10,7 @@ import {
   startTabApp,
 } from "../host.ts";
 import type { StartAppOptions, TabAppOptions } from "../host.ts";
-import { createSubBus, useHostProps } from "../sub.ts";
+import { createAppBus, createSubBus, useHostProps } from "../sub.ts";
 import type { SubAppConfig } from "../types.ts";
 import type { HostProps, MicroApp } from "../types.ts";
 
@@ -36,8 +37,18 @@ test("appEvents 事件契约字段齐全", () => {
     broadcast: "host:broadcast",
     state: "host:state",
     stateRequest: "sub:state-request",
+    tabNavigate: "host:tab-navigate",
     menu: "sub:menu",
   });
+});
+
+test("tabNavigate 契约:事件名与 payload 形状(id/page/query)", () => {
+  expect(appEvents.tabNavigate).toBe("host:tab-navigate");
+  const payload: TabNavigatePayload = { id: "sub-a|/|", page: "/table", query: { id: "1" } };
+  expect(payload).toEqual({ id: "sub-a|/|", page: "/table", query: { id: "1" } });
+  // query 可缺省(记录无 query 时)
+  const withoutQuery: TabNavigatePayload = { id: "sub-a|/|", page: "/" };
+  expect(withoutQuery.query).toBeUndefined();
 });
 
 test("createMicroAppStarter 透传静态 props 并触发 onStarted", () => {
@@ -229,6 +240,194 @@ test("reportMenu 以 props.tab.app 上报菜单,无 tab props 时 no-op", () => 
     globalAny.window = { $wujie: { props: {}, bus: { $emit: () => {} } } };
     expect(() => bus.reportMenu([{ label: "首页", path: "/" }])).not.toThrow();
     expect(emitted).toHaveLength(1);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+/** 最小 wujie bus mock:$on 收集监听 + $emit 分发(与 bus.test.ts 的 mock 同构) */
+function createMockWujieBus() {
+  const listeners = new Map<string, Set<(data?: unknown) => void>>();
+  return {
+    listeners,
+    $on(event: string, callback: (data?: unknown) => void): void {
+      let set = listeners.get(event);
+      if (!set) {
+        set = new Set();
+        listeners.set(event, set);
+      }
+      set.add(callback);
+    },
+    $emit(event: string, data?: unknown): void {
+      listeners.get(event)?.forEach((callback) => callback(data));
+    },
+  };
+}
+
+test("registerTabNavigateHandler:本 Tab payload 转发,异 Tab 与缺失 payload 丢弃", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const bus = createMockWujieBus();
+  globalAny.window = {
+    $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus },
+  };
+
+  try {
+    const received: Array<{ page: string; query?: Record<string, string> }> = [];
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    sub.registerTabNavigateHandler((page, query) => received.push({ page, query }));
+
+    // 本 Tab 纠偏:转发 page 与 query
+    bus.$emit(appEvents.tabNavigate, { id: "t1", page: "/table", query: { id: "1" } });
+    expect(received).toEqual([{ page: "/table", query: { id: "1" } }]);
+
+    // 异 Tab 的纠偏(多实例保活下全实例监听):丢弃
+    bus.$emit(appEvents.tabNavigate, { id: "t2", page: "/" });
+    // payload 缺失:不抛错不转发
+    expect(() => bus.$emit(appEvents.tabNavigate, undefined)).not.toThrow();
+    expect(received).toHaveLength(1);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("registerTabNavigateHandler 幂等:重复注册只挂一个监听,首次 handler 生效", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const bus = createMockWujieBus();
+  globalAny.window = {
+    $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus },
+  };
+
+  try {
+    const receivedA: string[] = [];
+    const receivedB: string[] = [];
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    sub.registerTabNavigateHandler((page) => receivedA.push(page));
+    sub.registerTabNavigateHandler((page) => receivedB.push(page)); // 被幂等标志挡住
+
+    bus.$emit(appEvents.tabNavigate, { id: "t1", page: "/table" });
+
+    expect(bus.listeners.get(appEvents.tabNavigate)?.size).toBe(1);
+    expect(receivedA).toEqual(["/table"]);
+    expect(receivedB).toEqual([]);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("registerTabNavigateHandler 非 wujie 环境 no-op,不抛错且不挂监听", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  globalAny.window = { $wujie: undefined }; // 独立直访:无 wujie 注入
+
+  try {
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    expect(() => sub.registerTabNavigateHandler(() => {})).not.toThrow();
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("createAppBus.openTab 独立运行回退 router.push", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  globalAny.window = { $wujie: undefined }; // 独立直访:无 wujie 注入
+
+  try {
+    const pushed: Array<{ path: string; query?: Record<string, string> }> = [];
+    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
+      push: (loc) => pushed.push(loc as { path: string }),
+    });
+
+    kit.openTab("/table", { id: "1" });
+    expect(pushed).toEqual([{ path: "/table", query: { id: "1" } }]);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("createAppBus.openTab 嵌入宿主时走 bus 事件,不触发本地 push", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const bus = createMockWujieBus();
+  const emitted: Array<{ event: string; data?: unknown }> = [];
+  bus.$emit = (event: string, data?: unknown) => emitted.push({ event, data }); // 仅捕获,不分发
+  globalAny.window = {
+    $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus },
+  };
+
+  try {
+    const pushed: unknown[] = [];
+    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
+      push: (loc) => pushed.push(loc),
+    });
+
+    kit.openTab("/table", { id: "1" });
+    expect(emitted).toEqual([
+      { event: appEvents.tabOpen, data: { app: "sub-a", page: "/table", query: { id: "1" } } },
+    ]);
+    expect(pushed).toEqual([]);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("createAppBus.openTab 嵌入但无 Tab 身份时回退 push(全屏容器边缘)", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  globalAny.window = {
+    $wujie: { props: {}, bus: createMockWujieBus() }, // wujie 注入但 props 无 tab
+  };
+
+  try {
+    const pushed: Array<{ path: string }> = [];
+    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
+      push: (loc) => pushed.push(loc as { path: string }),
+    });
+
+    kit.openTab("/table");
+    expect(pushed).toEqual([{ path: "/table" }]);
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("createAppBus 无 router:纠偏不接线,openTab 独立运行安全 no-op", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const bus = createMockWujieBus();
+  globalAny.window = { $wujie: undefined };
+
+  try {
+    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    expect(() => kit.openTab("/table")).not.toThrow();
+
+    globalAny.window = { $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus } };
+    expect(() => kit.openTab("/table")).not.toThrow(); // 有 Tab 身份:emit 成功即完成
+    expect(bus.listeners.size).toBe(0); // 无 router:不挂纠偏监听
+  } finally {
+    globalAny.window = originalWindow;
+  }
+});
+
+test("createAppBus 接线 host 纠偏:本 Tab 载荷转发为 router.push", () => {
+  const globalAny = globalThis as { window?: unknown };
+  const originalWindow = globalAny.window;
+  const bus = createMockWujieBus();
+  globalAny.window = {
+    $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus },
+  };
+
+  try {
+    const pushed: Array<{ path: string; query?: Record<string, string> }> = [];
+    createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
+      push: (loc) => pushed.push(loc as { path: string }),
+    });
+
+    bus.$emit(appEvents.tabNavigate, { id: "t1", page: "/form", query: { id: "2" } });
+    expect(pushed).toEqual([{ path: "/form", query: { id: "2" } }]);
+    expect(bus.listeners.get(appEvents.tabNavigate)?.size).toBe(1); // 幂等接线
   } finally {
     globalAny.window = originalWindow;
   }
