@@ -10,7 +10,7 @@ import {
   startTabApp,
 } from "../host.ts";
 import type { StartAppOptions, TabAppOptions } from "../host.ts";
-import { createAppBus, createSubBus, useHostProps } from "../sub.ts";
+import { createAppBus, createBus, useHostProps } from "../sub.ts";
 import type { MicroAppManifest } from "../types.ts";
 import type { HostProps, MicroApp } from "../types.ts";
 
@@ -230,7 +230,7 @@ test("reportMenu 以 props.tab.app 上报菜单,无 tab props 时 no-op", () => 
   };
 
   try {
-    const bus = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+    const bus = createBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
       MicroAppManifest,
       "name" | "accent"
     >);
@@ -277,7 +277,7 @@ test("registerTabNavigateHandler:本 Tab payload 转发,异 Tab 与缺失 payloa
 
   try {
     const received: Array<{ page: string; query?: Record<string, string> }> = [];
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+    const sub = createBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
       MicroAppManifest,
       "name" | "accent"
     >);
@@ -308,7 +308,7 @@ test("registerTabNavigateHandler 幂等:重复注册只挂一个监听,首次 ha
   try {
     const receivedA: string[] = [];
     const receivedB: string[] = [];
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+    const sub = createBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
       MicroAppManifest,
       "name" | "accent"
     >);
@@ -331,7 +331,7 @@ test("registerTabNavigateHandler 非 wujie 环境 no-op,不抛错且不挂监听
   globalAny.window = { $wujie: undefined }; // 独立直访:无 wujie 注入
 
   try {
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+    const sub = createBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
       MicroAppManifest,
       "name" | "accent"
     >);

@@ -2,12 +2,12 @@
 import { watch } from "vue";
 import { useRoute } from "vue-router";
 import { appConfig } from "./app.config";
-import { subBus } from "./bus";
+import { appBus } from "./bus";
 
 const route = useRoute();
 
 // 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
-if (appConfig.menu) subBus.reportMenu(appConfig.menu);
+if (appConfig.menu) appBus.reportMenu(appConfig.menu);
 
 /**
  * Tab 内页面标题:应用名 · menu 前缀最长命中(详情页等动态标题由页面自行上报覆盖)
@@ -26,8 +26,8 @@ function pageTitle(path: string): string {
 watch(
   () => [route.path, route.query] as const,
   ([path, query]) => {
-    subBus.syncTabRoute(path, query);
-    subBus.syncTabTitle(`${appConfig.name} · ${pageTitle(path)}`);
+    appBus.syncTabRoute(path, query);
+    appBus.syncTabTitle(`${appConfig.name} · ${pageTitle(path)}`);
   },
   { immediate: true },
 );

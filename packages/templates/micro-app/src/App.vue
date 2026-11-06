@@ -3,7 +3,7 @@ import { watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@repo/store";
 import { appConfig } from "./config/app.config";
-import { subBus } from "./core/micro-sub";
+import { appBus } from "./core/app-bus";
 
 const route = useRoute();
 const router = useRouter();
@@ -34,14 +34,14 @@ function pageTitle(path: string): string {
 }
 
 // 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
-if (appConfig.menu) subBus.reportMenu(appConfig.menu);
+if (appConfig.menu) appBus.reportMenu(appConfig.menu);
 
 /** Tab 内导航同步(替代 wujie sync):路由变化上报主应用,标题按菜单前缀匹配回报 */
 watch(
   () => [route.path, route.query] as const,
   ([path, query]) => {
-    subBus.syncTabRoute(path, query);
-    subBus.syncTabTitle(pageTitle(path));
+    appBus.syncTabRoute(path, query);
+    appBus.syncTabTitle(pageTitle(path));
   },
   { immediate: true },
 );

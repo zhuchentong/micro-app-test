@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { appConfig } from "../app.config";
-import { subBus } from "../bus";
+import { appBus } from "../bus";
 
 /** 模拟账号表(写死,仅供登录演示) */
 const ACCOUNTS: Record<string, { password: string; user: { id: string; name: string } }> = {
@@ -28,7 +28,7 @@ async function handleLogin() {
   // 模拟 300ms 网络延迟后上报登录,嵌入模式 host 收到事件后销毁本实例
   loading.value = true;
   await new Promise((resolve) => setTimeout(resolve, 300));
-  subBus.reportLogin(account.user);
+  appBus.reportLogin(account.user);
 }
 </script>
 

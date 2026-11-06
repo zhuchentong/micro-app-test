@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
-import { subBus } from "../../bus";
+import { appBus } from "../../bus";
 import { findProduct } from "../../mock/products";
 
 const route = useRoute();
@@ -23,7 +23,7 @@ watch(
   (item) => {
     const title = item ? `${item.name} #${item.id}` : "产品详情";
     if (isWujie() && hostProps?.tab) {
-      subBus.syncTabTitle(title);
+      appBus.syncTabTitle(title);
     } else {
       document.title = title;
     }
