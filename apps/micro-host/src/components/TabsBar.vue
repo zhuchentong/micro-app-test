@@ -21,6 +21,10 @@ async function closeTab(id: string): Promise<void> {
 
 <template>
   <div class="tabs-bar" role="tablist">
+    <!-- 品牌 logo(设计稿 node 91:1:标签栏左侧 36px;占位图标,右距 14 含 gap 4 补偿) -->
+    <div aria-hidden="true" class="tabs-brand">
+      <icon-svg-logo />
+    </div>
     <!-- Tab 用 div role=tab:内部需要嵌套真关闭按钮,button 嵌套 button 属无效 HTML(lint 强制) -->
     <div
       v-for="tab in tabs.tabs"
@@ -52,6 +56,7 @@ async function closeTab(id: string): Promise<void> {
 </template>
 
 <style scoped>
+/* 标签栏(设计稿 node 91:1「标签栏」:48px #F5FAFD 底跨用 --app-bg-raised(light=n25)) */
 .tabs-bar {
   flex: none;
   height: 48px;
@@ -60,9 +65,19 @@ async function closeTab(id: string): Promise<void> {
   gap: 4px;
   padding: 0 16px;
   overflow-x: auto;
-  /* 比页面底稍浅一档的衬底:与下方内容区形成层次 */
-  background: var(--app-bg-surface);
+  background: var(--app-bg-raised);
   border-bottom: 1px solid var(--app-border);
+}
+
+/* 品牌 logo 占位:36px,右距 10 + 容器 gap 4 = 设计稿 14 */
+.tabs-brand {
+  flex: none;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--app-brand);
+  font-size: 36px;
 }
 
 .tab-item {
@@ -79,7 +94,9 @@ async function closeTab(id: string): Promise<void> {
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .tab-item:focus-visible {

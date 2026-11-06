@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "vite-plus/test";
 import { createPinia, setActivePinia } from "pinia";
-import { TABS_STORAGE_KEY, configureTabOps, useTabsStore } from "./tabs";
+import { MAX_ROUTE_HISTORY, TABS_STORAGE_KEY, configureTabOps, useTabsStore } from "./tabs";
 import type { TabOps } from "./tabs";
 import { apps } from "../apps";
 import { buildTabKey } from "@repo/wujie-kit/host";
@@ -186,6 +186,85 @@ test("tabRoute/tabTitle 回报只作用于对应 Tab,并持久化", async () => 
 
   const snapshot = JSON.parse(sessionStorageStub.store.get(TABS_STORAGE_KEY)!);
   expect(snapshot.tabs[0].title).toBe("产品 2");
+});
+
+test("停点栈:种子/前进入栈/顶去重/自身后退弹栈,canBackActive 门控", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("micro-app-demo", "/product", { id: "1" });
+  const id = tabs.tabs[0].id;
+  // 种子停点 = 首屏内容;栈深 1 不可回退
+  expect(tabs.routeHistories[id]).toEqual([{ page: "/product", query: { id: "1" } }]);
+  expect(tabs.canBackActive).toBe(false);
+
+  // 前进导航:入栈
+  tabs.applyTabRoute({ id, page: "/products" });
+  expect(tabs.routeHistories[id]).toHaveLength(2);
+  expect(tabs.canBackActive).toBe(true);
+
+  // 顶去重:同停点回报不再入栈
+  tabs.applyTabRoute({ id, page: "/products" });
+  expect(tabs.routeHistories[id]).toHaveLength(2);
+
+  // 子应用自身后退(回报 == 栈顶下一项):弹栈
+  tabs.applyTabRoute({ id, page: "/product", query: { id: "1" } });
+  expect(tabs.routeHistories[id]).toEqual([{ page: "/product", query: { id: "1" } }]);
+  expect(tabs.canBackActive).toBe(false);
+});
+
+test("backActive:弹栈并经 activate 纠偏下发 tabNavigate;栈深不足不动作", async () => {
+  const { ops, navigated } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("micro-app-demo", "/products");
+  const id = tabs.tabs[0].id;
+  tabs.applyTabRoute({ id, page: "/products/p1" });
+
+  expect(await tabs.backActive()).toBe(true);
+  // 纠偏载荷 = 弹栈后的上一停点;记录同步回退
+  expect(navigated).toEqual([{ id, page: "/products" }]);
+  expect(tabs.tabs[0].page).toBe("/products");
+  expect(tabs.canBackActive).toBe(false); // 回退后不可前进(无 forward 栈)
+
+  // 栈深不足:返回 false 且不产生纠偏下发
+  expect(await tabs.backActive()).toBe(false);
+  expect(navigated).toHaveLength(1);
+});
+
+test("停点栈 cap:超过 MAX_ROUTE_HISTORY 丢最旧", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("micro-app-demo", "/page-0");
+  const id = tabs.tabs[0].id;
+  for (let i = 1; i <= MAX_ROUTE_HISTORY + 2; i++) {
+    tabs.applyTabRoute({ id, page: `/page-${i}` });
+  }
+
+  expect(tabs.routeHistories[id]).toHaveLength(MAX_ROUTE_HISTORY);
+  expect(tabs.routeHistories[id]![0]!.page).toBe("/page-3");
+});
+
+test("停点栈生命周期:closeTab 清理对应栈,endSession 清空", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("micro-app-demo", "/");
+  await tabs.openTab("micro-app-demo", "/products");
+  const productsId = tabs.tabs[1].id;
+  tabs.applyTabRoute({ id: productsId, page: "/products/p1" });
+  expect(tabs.routeHistories[productsId]).toHaveLength(2);
+
+  await tabs.closeTab(productsId);
+  expect(tabs.routeHistories[productsId]).toBeUndefined();
+
+  await tabs.endSession();
+  expect(tabs.routeHistories).toEqual({});
 });
 
 test("启动恢复:sessionStorage 记录落回 cold,地址栏 Tab 按需重建", async () => {

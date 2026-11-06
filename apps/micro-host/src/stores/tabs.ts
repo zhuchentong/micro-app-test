@@ -10,6 +10,41 @@ export const TABS_STORAGE_KEY = "wujie-mvp:tabs:v1";
 /** 保活实例上限:超过后把最久未激活的 background 实例销毁(转 cold,激活时重建) */
 export const TAB_ALIVE_LIMIT = 8;
 
+/** 单 Tab 路由停点栈上限:线性深导航防无界增长(超出丢最旧) */
+export const MAX_ROUTE_HISTORY = 32;
+
+/** 路由停点(backActive 的回退目标;相等性一律经 buildTabKey 字符串比较,禁手写对象比较) */
+interface RouteStop {
+  page: string;
+  query?: Record<string, string>;
+}
+
+/**
+ * 停点相等性:page+query 归一为 buildTabKey 字符串比较(query 键序无关,activate S2 同款)
+ * @param app 子应用 key(buildTabKey 载荷)
+ * @param a 停点一
+ * @param b 停点二
+ * @returns 相等为 true
+ */
+function sameStop(app: string, a: RouteStop, b: RouteStop): boolean {
+  return buildTabKey(app, a.page, a.query) === buildTabKey(app, b.page, b.query);
+}
+
+/**
+ * 幂等建栈:栈缺失时以记录当前内容种子(恢复态/迟到回报场景);已存在则原样返回不覆盖
+ * @param store tabs store 状态
+ * @param tab 目标 Tab 记录
+ * @returns 该 Tab 的停点栈(可继续维护)
+ */
+function ensureStack(store: TabsState, tab: TabRecord): RouteStop[] {
+  let stack = store.routeHistories[tab.id];
+  if (!stack) {
+    stack = [{ page: tab.page, query: tab.query }];
+    store.routeHistories[tab.id] = stack;
+  }
+  return stack;
+}
+
 export interface TabRecord {
   /** 确定性去重键:buildTabKey(app, page, query);创建后身份不变(Tab 内导航只改 page/query) */
   id: string;
@@ -65,6 +100,8 @@ type TabsState = {
   tabs: TabRecord[];
   activeId: string | null;
   seq: number;
+  /** 每 Tab 路由停点栈(键 = tab.id;会话内状态不持久化:刷新后栈重置,回退按钮置灰) */
+  routeHistories: Record<string, RouteStop[]>;
 };
 
 /** cold Tab 实例化去重锁:同 id 的并发 activate 共享同一在途 promise(nextTick 窗口交错也不重复 start) */
@@ -210,6 +247,7 @@ export const useTabsStore = defineStore("tabs", {
       tabs: [],
       activeId: null,
       seq: 0,
+      routeHistories: {},
     }) as TabsState,
   getters: {
     activeTab(state): TabRecord | undefined {
@@ -222,6 +260,15 @@ export const useTabsStore = defineStore("tabs", {
      */
     aliveCount(state): number {
       return state.tabs.filter((tab) => tab.state !== "cold").length;
+    },
+    /**
+     * 激活 Tab 是否可回退(停点栈深 ≥2);面包屑返回按钮态的门控
+     * @param state getter 注入的 store 状态
+     * @returns 可回退为 true
+     */
+    canBackActive(state): boolean {
+      const tab = state.tabs.find((item) => item.id === state.activeId);
+      return !!tab && (state.routeHistories[tab.id]?.length ?? 0) >= 2;
     },
   },
 
@@ -266,6 +313,9 @@ export const useTabsStore = defineStore("tabs", {
         this.activeId = tab.id;
       }
 
+      // 路由停点栈为会话内状态:恢复/新建记录按当前内容种子(幂等,复用记录不覆盖既有栈)
+      for (const tab of this.tabs) ensureStack(this, tab);
+
       this.persist();
       // 不传 requested:S1 已保证恢复态 id === buildTabKey(当前内容),恢复路径数学上
       // 不可达漂移,激活语义与 TabsBar 一致(URL 跟随实例)
@@ -308,6 +358,8 @@ export const useTabsStore = defineStore("tabs", {
           n: ++this.seq,
         };
         this.tabs.push(tab);
+        // 新建 Tab 以首屏内容种子停点栈(去重命中的既有记录保留原栈)
+        ensureStack(this, tab);
       }
       // 新建记录传参无害(内容恒等,不触发纠偏);命中漂移记录时经 activate 纠偏
       await this.activate(id, { page, query });
@@ -386,6 +438,25 @@ export const useTabsStore = defineStore("tabs", {
     },
 
     /**
+     * 面包屑「返回」:弹出激活 Tab 停点栈顶,经 activate 纠偏通道把子应用送回上一停点。
+     * 不用子应用 router.back():wujie 沙箱 iframe 的 history.go 会联合遍历顶层历史
+     * (实测把主页面导航到 about:blank);纯 push 下发是唯一安全回退路径。
+     * 栈为线性启发式:replace 类导航会多入栈(连续去重兜底);回退后不可前进(无 forward 栈)。
+     * @returns 是否执行了回退(栈深不足为 false,调用方无需处理)
+     */
+    async backActive(): Promise<boolean> {
+      const tab = this.activeTab;
+      if (!tab) return false;
+      const stack = this.routeHistories[tab.id];
+      if (!stack || stack.length < 2) return false;
+      stack.pop(); // 弹出当前停点;栈顶即回退目标(prev 由长度 ≥2 保证存在)
+      const prev = stack[stack.length - 1]!;
+      // activate 纠偏:改写记录 → navigateTab 下发 tabNavigate(纯 push) → 同步地址栏/标题/快照
+      await this.activate(tab.id, { page: prev.page, query: prev.query });
+      return true;
+    },
+
+    /**
      * 关闭 Tab:先同步移除记录再异步销毁;激活 Tab 被关则激活相邻(左优先)
      * @param id 要关闭的 Tab id
      */
@@ -394,6 +465,8 @@ export const useTabsStore = defineStore("tabs", {
       if (index < 0) return;
       const wasActive = this.activeId === id;
       const [tab] = this.tabs.splice(index, 1);
+      // 停点栈随记录消亡(同页重开走新记录 + 新栈)
+      delete this.routeHistories[id];
       // 记录已移除,销毁期间的重开会走新记录 + 新容器,不与在途 destroy 互踩
       if (tab.state !== "cold") {
         await destroyQuietly(tab);
@@ -422,6 +495,21 @@ export const useTabsStore = defineStore("tabs", {
       if (!tab) return; // 实例晚于 Tab 注销的迟到事件
       tab.page = payload.page;
       tab.query = payload.query;
+      // 停点栈维护(线性启发式):==栈顶去重(初始对齐/纠偏回报);
+      // ==栈顶下一项弹栈(子应用自身后退);否则入栈(cap 裁剪防深导航无界)
+      const stack = ensureStack(this, tab);
+      const report: RouteStop = { page: payload.page, query: payload.query };
+      const top = stack[stack.length - 1];
+      const isTop = !!top && sameStop(tab.app, top, report);
+      const isBack = stack.length >= 2 && sameStop(tab.app, stack[stack.length - 2]!, report);
+      if (!isTop) {
+        if (isBack) {
+          stack.pop();
+        } else {
+          stack.push(report);
+          if (stack.length > MAX_ROUTE_HISTORY) stack.shift();
+        }
+      }
       if (tab.id === this.activeId) {
         window.history.replaceState(null, "", mainPath(tab));
       }
@@ -468,6 +556,7 @@ export const useTabsStore = defineStore("tabs", {
       this.tabs = [];
       this.activeId = null;
       this.seq = 0;
+      this.routeHistories = {};
       sessionStorage.removeItem(TABS_STORAGE_KEY);
       document.title = "无界 MVP · 主应用";
       window.history.replaceState(null, "", "/");

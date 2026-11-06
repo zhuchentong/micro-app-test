@@ -171,8 +171,9 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  /* 主题变量由 @repo/themes 经 host main.ts 写入 :root,此处只消费(var 经继承穿透到子应用 DOM) */
-  background: var(--app-bg-page);
+  /* 主题变量由 @repo/themes 经 host main.ts 写入 :root,此处只消费(var 经继承穿透到子应用 DOM);
+     壳层用 page-deep(设计稿 node 91:1 画布色,比衬底/卡片深一档),卡片层次由各自底色承担 */
+  background: var(--app-bg-page-deep);
 }
 
 .shell-main {

@@ -61,10 +61,6 @@ function openFromMenu(app: HostApp, menu: MenuEntry): void {
 
 <template>
   <aside class="icon-nav">
-    <div aria-hidden="true" class="nav-brand">
-      <icon-svg-logo />
-    </div>
-
     <nav class="nav-list">
       <!-- mouseenter/leave 挂在 nav-group:移入浮层期间不收起;nav-popover--open 为编程强制显示通道 -->
       <div v-for="app in apps" :key="app.key" class="nav-group">
@@ -147,14 +143,6 @@ function openFromMenu(app: HostApp, menu: MenuEntry): void {
   background: var(--app-bg-raised);
 }
 
-.nav-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  color: var(--app-brand);
-}
-
 .nav-list {
   flex: 1;
   display: flex;
@@ -167,14 +155,14 @@ function openFromMenu(app: HostApp, menu: MenuEntry): void {
   position: relative;
 }
 
-/* 导航图标项:tu-design Button(ghost/icon)打底,scoped 覆盖回 38px 导航规格 */
+/* 导航图标项:tu-design Button(ghost/icon)打底,scoped 覆盖回 38px 导航规格(图标 16px,设计稿 node 109:200) */
 .nav-item {
   width: 38px;
   height: 38px;
   padding: 0;
   border-radius: var(--app-radius-md);
   color: var(--app-text-2);
-  font-size: 20px;
+  font-size: 16px;
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -183,8 +171,8 @@ function openFromMenu(app: HostApp, menu: MenuEntry): void {
 
 /* Button 基础样式会把无尺寸 class 的 svg 缩到 16px,恢复图标原尺寸 */
 .nav-item :deep(svg) {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .nav-item:hover {

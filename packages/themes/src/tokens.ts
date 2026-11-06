@@ -108,6 +108,7 @@ const darkStatus = {
 export const themeVars = [
   // 表面/结构
   "--app-bg-page",
+  "--app-bg-page-deep",
   "--app-bg-surface",
   "--app-bg-raised",
   "--app-bg-substrate",
@@ -170,6 +171,8 @@ const dataTokens = {
 export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
   light: {
     "--app-bg-page": neutralPalette.canvas,
+    // 页面底加深一档:宿主壳层背景(设计稿 node 91:1 画布 #E8EEF4),比衬底/卡片更深以托起层次
+    "--app-bg-page-deep": neutralPalette.n100,
     "--app-bg-surface": neutralPalette.white,
     "--app-bg-raised": neutralPalette.n25,
     // 衬底卡(host 子应用容器底座,设计稿 #DCE8F2)
@@ -201,6 +204,8 @@ export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
   },
   dark: {
     "--app-bg-page": darkSurface.canvas,
+    // 暗色页面底加深一档:相对 canvas(当前暗色页面底)下探,保持壳层 < 表面的层次方向
+    "--app-bg-page-deep": "#06141f",
     "--app-bg-surface": darkSurface.surface,
     "--app-bg-raised": darkSurface.raised,
     // 衬底卡:暗色取 raised(比 surface 亮一层,保持卡片上抬感;若取 surface 会与内容卡同色失层次)

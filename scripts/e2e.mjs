@@ -596,7 +596,7 @@ async function flow5TabOpen() {
   await waitFn("location.pathname === '/micro-app-demo/products'", "产品 Tab 激活");
   await waitAppText("产品列表");
   const clicked = await jsClickInActiveApp(
-    "el => (el.children.length <= 3 && (el.textContent || '').trim().startsWith('智能手表 Pro'))",
+    "el => (el.tagName === 'BUTTON' && (el.textContent || '').trim().startsWith('智能手表 Pro'))",
   );
   expect("点击产品 智能手表 Pro", clicked.clicked, true);
   await waitFn(

@@ -11,11 +11,30 @@ const layoutStore = useLayoutStore();
 
 /** 当前布局 meta:直接从 store 读,不层层传 props */
 const meta = computed(() => layouts[layoutStore.current].meta);
+
+/** 面包屑「返回」:弹出激活 Tab 停点栈顶,经 activate→tabNavigate 纠偏链路把子应用送回上一停点。
+    不用子应用 router.back():wujie 沙箱 iframe 的 history.go 会联合遍历顶层历史(实测炸主页面) */
+function navBack(): void {
+  void tabs.backActive();
+}
 </script>
 
 <template>
   <section class="workbench">
     <div v-show="meta.showBreadcrumb" class="breadcrumb">
+      <!-- 返回(设计稿 node 91:1 面包屑):弹激活 Tab 停点栈,纠偏链路送子应用回上一停点;栈深不足置灰 -->
+      <Button
+        class="breadcrumb-back"
+        type="button"
+        variant="ghost"
+        :disabled="!tabs.canBackActive"
+        aria-label="返回上一页"
+        title="返回上一页(回退后不可前进)"
+        @click="navBack"
+      >
+        <icon-tdesign-arrow-left />
+        返回
+      </Button>
       <span class="breadcrumb-root">工作台</span>
       <template v-if="tabs.activeTab">
         <span aria-hidden="true" class="breadcrumb-sep">/</span>
@@ -56,17 +75,47 @@ const meta = computed(() => layouts[layoutStore.current].meta);
   gap: 14px;
 }
 
+/* 面包屑(设计稿 node 91:1:白底卡 1334×44 r12):白底跨用 --app-bg-surface(light=white) */
 .breadcrumb {
   flex: none;
   height: 44px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 16px;
+  padding: 0 17px 0 14px;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-lg);
-  background: var(--app-bg-raised);
+  background: var(--app-bg-surface);
   font-size: var(--app-fs-caption);
+}
+
+/* 返回按钮(设计稿 node 91:1:26px 白底描边钮,icon 14 + 文字 12):Button(ghost)打底 scoped 覆盖 */
+.breadcrumb-back {
+  flex: none;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-sm);
+  background: var(--app-bg-surface);
+  color: var(--app-text-1);
+  font-size: 12px;
+}
+
+.breadcrumb-back :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+
+.breadcrumb-back:hover {
+  background: var(--app-bg-hover);
+}
+
+.breadcrumb-back:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .breadcrumb-root {
@@ -94,15 +143,15 @@ const meta = computed(() => layouts[layoutStore.current].meta);
   --stage-inset: 12px;
 }
 
-/* ① 单层衬底卡(设计稿 node 91:114:20px 圆角 + #DCE8F2 底 → --app-bg-substrate)。
-   子应用(接入 PageContainer 的)就绪后其 DefaultLayout 卡坐落于同一区域 12px 留白内;
-   未接入的子应用(a/b)整页以自身 page 底覆盖本卡,观感回退为无衬底 */
+/* ① 单层衬底卡(设计稿 node 91:1「子应用」卡:20px 圆角 + #EDF4F9 底;跨用 --app-bg-page,
+   light=canvas #EDF4F9 恰为目标值,子应用消费方语义不变)。
+   子应用(接入 PageContainer 的)就绪后其 DefaultLayout 卡坐落于同一区域 12px 留白内 */
 .pane-frame {
   position: absolute;
   inset: 0;
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-3xl);
-  background: var(--app-bg-substrate);
+  background: var(--app-bg-page);
 }
 
 /* ③ 容器层:常驻,只切 inset 不切显隐 */
