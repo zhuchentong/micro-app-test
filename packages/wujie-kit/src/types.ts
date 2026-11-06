@@ -15,12 +15,22 @@ export interface MicroApp {
   color: string;
 }
 
-/** 子应用自身标识配置 */
-export interface SubAppConfig {
+/**
+ * 子应用身份单源声明(app.manifest.json 的形状):
+ * host 注册表聚合(microAppRegistryPlugin)与子应用 bus 契约共用。
+ * 字段校验在 @repo/config-vite 的注册聚合插件配置加载期执行(缺字段快速失败)。
+ */
+export interface MicroAppManifest {
+  /** 注册表唯一键:Tab 持久化身份(localStorage),创建后不可改名;新建应用约定 = 目录名 */
+  key: string;
+  /** 展示名:Tab 标题、侧栏应用名 */
   name: string;
+  /** 主题强调色:host 注册表 color 与子应用 accent 的单源 */
   accent: string;
-  /** 侧栏菜单上报内容(App.vue 组合根处 reportMenu 上报;缺省则 host 用静态兜底) */
+  /** 侧栏菜单:既是 host 静态兜底也是子应用上报内容(上报按 key 幂等覆盖);缺省 = 无菜单 */
   menu?: MenuEntry[];
+  /** 应用形态:缺省/"tab" = 进 Tab 注册表;"gateway" = 全屏网关(不进 Tab 注册表,如授权网关) */
+  mode?: "tab" | "gateway";
 }
 
 /** Tab 身份信息:由主应用确定性生成,经 startApp props 注入子应用 */

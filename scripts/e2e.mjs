@@ -39,12 +39,31 @@
  *    旧链路 4 暗色切换 / 5 accent 预设 / 7 广播随 UI 重设计移除对应入口后删除)
  */
 import { spawn, execFile } from "node:child_process";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const HOST_URL = "http://localhost:5175";
 /** 首次冷启动含依赖重优化,就绪轮询给独立长超时(agent-browser 单命令默认 25s) */
 const READY_TIMEOUT_MS = 90_000;
+
+/**
+ * 注册表 tab 应用数:与 host 注册聚合同源(apps/<name>/app.manifest.json,过滤 mode=gateway)。
+ * 注册表已随 manifest 动态化,断言不再硬编码数量
+ * @returns 非 gateway 的注册应用数
+ */
+function registeredTabAppCount() {
+  const appsDir = join(repoRoot, "apps");
+  let count = 0;
+  for (const entry of readdirSync(appsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const manifestPath = join(appsDir, entry.name, "app.manifest.json");
+    if (!existsSync(manifestPath)) continue;
+    if (JSON.parse(readFileSync(manifestPath, "utf8")).mode !== "gateway") count += 1;
+  }
+  return count;
+}
 
 process.env.AGENT_BROWSER_SESSION = "wujie-mvp-e2e";
 
@@ -194,7 +213,7 @@ function expect(name, actual, expected) {
 }
 
 /**
- * 点击图标导航项。.nav-item 顺序 = 子应用注册表顺序(sub-a, sub-b),
+ * 点击图标导航项。.nav-item 顺序 = 子应用注册表顺序(manifest key 排序),
  * 点击即打开该子应用默认页;host 侧无 iframe 覆盖,原生 click 可用
  *
  * @param {number} index 导航项下标
@@ -392,7 +411,10 @@ async function resetBaseline() {
   );
   await waitLoad("load");
   await loginViaGateway("admin", "123456");
-  await waitFn("document.querySelectorAll('.nav-item').length === 2", "登录后 host 图标导航就绪");
+  await waitFn(
+    `document.querySelectorAll('.nav-item').length === ${registeredTabAppCount()}`,
+    "登录后 host 图标导航就绪",
+  );
 }
 
 /**
@@ -438,7 +460,7 @@ async function flow1HostLoaded() {
   );
   expect("标签栏 tabs-bar 存在", state.tabsBar, true);
   expect("图标导航 icon-nav 存在", state.iconNav, true);
-  expect("导航项 = 2(每子应用一个)", state.navItems, 2);
+  expect("导航项 = 注册表 tab 应用数(每子应用一个)", state.navItems, registeredTabAppCount());
   expect("面包屑 breadcrumb 存在", state.breadcrumb, true);
   expect("pane 舞台 pane-stage 存在", state.paneStage, true);
 }

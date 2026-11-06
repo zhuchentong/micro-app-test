@@ -11,8 +11,9 @@ export type {
   HostStatePayload,
   MenuEntry,
   MenuReportPayload,
+  TabNavigatePayload,
   TabOpenPayload,
   TabRoutePayload,
   TabTitlePayload,
 } from "./events";
-export type { HostProps, MicroApp, SubAppConfig, SyncBus, TabInfo } from "./types";
+export type { HostProps, MicroApp, MicroAppManifest, SyncBus, TabInfo } from "./types";

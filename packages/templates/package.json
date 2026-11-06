@@ -1,0 +1,23 @@
+{
+  "name": "@repo/templates",
+  "version": "0.1.0",
+  "private": true,
+  "description": "micro-app 脚手架模板单源(package version 即模板版本,生成器写入 scaffold.lock.json;模板本体在 micro-app/,哨兵替换见 scripts/create-micro-app.mjs)",
+  "type": "module",
+  "devDependencies": {
+    "@repo/config-typescript": "workspace:*",
+    "@repo/config-vite": "workspace:*",
+    "@repo/share": "workspace:*",
+    "@repo/store": "workspace:*",
+    "@repo/themes": "workspace:*",
+    "@repo/tu-design": "workspace:*",
+    "@repo/wujie-kit": "workspace:*",
+    "pinia": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:"
+  }
+}

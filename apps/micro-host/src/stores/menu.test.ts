@@ -2,11 +2,11 @@ import { expect, test } from "vite-plus/test";
 import { createPinia, setActivePinia } from "pinia";
 import { useMenuStore } from "./menu";
 
-test("未上报时回落静态注册表菜单", () => {
+test("未上报时回落静态注册表菜单(manifest 单源:兜底与子应用自报同源)", () => {
   setActivePinia(createPinia());
   const menu = useMenuStore();
 
-  expect(menu.menuFor("sub-a").map((item) => item.path)).toEqual(["/", "/products"]);
+  expect(menu.menuFor("sub-a").map((item) => item.path)).toEqual(["/", "/products", "/about"]);
   expect(menu.menuFor("sub-b").map((item) => item.path)).toEqual(["/", "/about"]);
 });
 

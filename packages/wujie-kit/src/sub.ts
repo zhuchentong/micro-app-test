@@ -11,7 +11,10 @@ import type {
   TabRoutePayload,
   TabTitlePayload,
 } from "./events";
-import type { HostProps, SubAppConfig } from "./types";
+import type { HostProps, MicroAppManifest } from "./types";
+
+/** 子应用 bus 所需的身份子集(app.manifest.json 透传即可满足;name 为消息来源标识) */
+type SubAppIdentity = Pick<MicroAppManifest, "name" | "accent">;
 
 /**
  * 是否运行在 wujie 环境中
@@ -95,7 +98,7 @@ function normalizeQuery(query: RouteQuery): Record<string, string> | undefined {
  * @param config 子应用配置(至少提供 name 作为消息来源标识)
  * @returns SubBus 能力集合(含响应式 lastBroadcast 与各事件发送方法)
  */
-export function createSubBus(config: SubAppConfig): SubBus {
+export function createSubBus(config: SubAppIdentity): SubBus {
   const lastBroadcast = ref("");
   let broadcastRegistered = false;
   let tabNavigateRegistered = false;
@@ -187,7 +190,7 @@ export interface SubAppBus {
  * @param router 应用 vue-router 实例(结构化按 SubRouter 匹配);缺省时不接纠偏、回退无效
  * @returns SubAppBus
  */
-export function createAppBus(config: SubAppConfig, router?: SubRouter): SubAppBus {
+export function createAppBus(config: SubAppIdentity, router?: SubRouter): SubAppBus {
   const subBus = createSubBus(config);
   if (router) {
     // host 纠偏漂移 Tab 时(host:tab-navigate),按载荷跳路由,内容回到记录身份

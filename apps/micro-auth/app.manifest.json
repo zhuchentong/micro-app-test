@@ -1,0 +1,6 @@
+{
+  "key": "auth",
+  "name": "授权网关",
+  "accent": "#fa8c16",
+  "mode": "gateway"
+}

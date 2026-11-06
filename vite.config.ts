@@ -1,8 +1,12 @@
 import { defineVizeLintConfig, flatConfigs } from "oxlint-plugin-vize";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
+import { microAppRegistryPlugin } from "@repo/config-vite";
 import { repoJsdocPlugin, withJsdoc } from "@repo/config-lint/config";
 
 export default defineConfig({
+  // 子应用注册聚合:仓库级测试(根目录统一跑全部包的 test)以本配置为宿主,需能解析
+  // virtual:micro-app-registry(micro-host 的 apps.ts 消费);各 app dev/build 用各自 config 自行装配
+  plugins: [microAppRegistryPlugin()],
   staged: {
     // 源码文件走完整 check(格式化 + lint + typecheck)
     "*.{ts,tsx,vue,js,mjs,cjs}": "vp run check -- --fix",

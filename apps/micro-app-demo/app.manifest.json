@@ -1,0 +1,10 @@
+{
+  "key": "sub-demo",
+  "name": "测试 Demo",
+  "accent": "#722ed1",
+  "menu": [
+    { "label": "布局演示", "path": "/" },
+    { "label": "表格页", "path": "/table" },
+    { "label": "表单页", "path": "/form" }
+  ]
+}

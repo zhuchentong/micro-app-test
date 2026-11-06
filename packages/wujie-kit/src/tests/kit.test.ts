@@ -11,7 +11,7 @@ import {
 } from "../host.ts";
 import type { StartAppOptions, TabAppOptions } from "../host.ts";
 import { createAppBus, createSubBus, useHostProps } from "../sub.ts";
-import type { SubAppConfig } from "../types.ts";
+import type { MicroAppManifest } from "../types.ts";
 import type { HostProps, MicroApp } from "../types.ts";
 
 const apps: MicroApp[] = [
@@ -230,7 +230,10 @@ test("reportMenu 以 props.tab.app 上报菜单,无 tab props 时 no-op", () => 
   };
 
   try {
-    const bus = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    const bus = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+      MicroAppManifest,
+      "name" | "accent"
+    >);
     bus.reportMenu([{ label: "首页", path: "/" }]);
     expect(emitted).toEqual([
       { event: appEvents.menu, data: { app: "sub-a", menu: [{ label: "首页", path: "/" }] } },
@@ -274,7 +277,10 @@ test("registerTabNavigateHandler:本 Tab payload 转发,异 Tab 与缺失 payloa
 
   try {
     const received: Array<{ page: string; query?: Record<string, string> }> = [];
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+      MicroAppManifest,
+      "name" | "accent"
+    >);
     sub.registerTabNavigateHandler((page, query) => received.push({ page, query }));
 
     // 本 Tab 纠偏:转发 page 与 query
@@ -302,7 +308,10 @@ test("registerTabNavigateHandler 幂等:重复注册只挂一个监听,首次 ha
   try {
     const receivedA: string[] = [];
     const receivedB: string[] = [];
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+      MicroAppManifest,
+      "name" | "accent"
+    >);
     sub.registerTabNavigateHandler((page) => receivedA.push(page));
     sub.registerTabNavigateHandler((page) => receivedB.push(page)); // 被幂等标志挡住
 
@@ -322,7 +331,10 @@ test("registerTabNavigateHandler 非 wujie 环境 no-op,不抛错且不挂监听
   globalAny.window = { $wujie: undefined }; // 独立直访:无 wujie 注入
 
   try {
-    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    const sub = createSubBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+      MicroAppManifest,
+      "name" | "accent"
+    >);
     expect(() => sub.registerTabNavigateHandler(() => {})).not.toThrow();
   } finally {
     globalAny.window = originalWindow;
@@ -336,9 +348,12 @@ test("createAppBus.openTab 独立运行回退 router.push", () => {
 
   try {
     const pushed: Array<{ path: string; query?: Record<string, string> }> = [];
-    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
-      push: (loc) => pushed.push(loc as { path: string }),
-    });
+    const kit = createAppBus(
+      { name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<MicroAppManifest, "name" | "accent">,
+      {
+        push: (loc) => pushed.push(loc as { path: string }),
+      },
+    );
 
     kit.openTab("/table", { id: "1" });
     expect(pushed).toEqual([{ path: "/table", query: { id: "1" } }]);
@@ -359,9 +374,12 @@ test("createAppBus.openTab 嵌入宿主时走 bus 事件,不触发本地 push", 
 
   try {
     const pushed: unknown[] = [];
-    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
-      push: (loc) => pushed.push(loc),
-    });
+    const kit = createAppBus(
+      { name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<MicroAppManifest, "name" | "accent">,
+      {
+        push: (loc) => pushed.push(loc),
+      },
+    );
 
     kit.openTab("/table", { id: "1" });
     expect(emitted).toEqual([
@@ -382,9 +400,12 @@ test("createAppBus.openTab 嵌入但无 Tab 身份时回退 push(全屏容器边
 
   try {
     const pushed: Array<{ path: string }> = [];
-    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
-      push: (loc) => pushed.push(loc as { path: string }),
-    });
+    const kit = createAppBus(
+      { name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<MicroAppManifest, "name" | "accent">,
+      {
+        push: (loc) => pushed.push(loc as { path: string }),
+      },
+    );
 
     kit.openTab("/table");
     expect(pushed).toEqual([{ path: "/table" }]);
@@ -400,7 +421,10 @@ test("createAppBus 无 router:纠偏不接线,openTab 独立运行安全 no-op",
   globalAny.window = { $wujie: undefined };
 
   try {
-    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig);
+    const kit = createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<
+      MicroAppManifest,
+      "name" | "accent"
+    >);
     expect(() => kit.openTab("/table")).not.toThrow();
 
     globalAny.window = { $wujie: { props: { tab: { id: "t1", app: "sub-a", page: "/" } }, bus } };
@@ -421,9 +445,12 @@ test("createAppBus 接线 host 纠偏:本 Tab 载荷转发为 router.push", () =
 
   try {
     const pushed: Array<{ path: string; query?: Record<string, string> }> = [];
-    createAppBus({ name: "子应用 A", accent: "#5b8ff9" } satisfies SubAppConfig, {
-      push: (loc) => pushed.push(loc as { path: string }),
-    });
+    createAppBus(
+      { name: "子应用 A", accent: "#5b8ff9" } satisfies Pick<MicroAppManifest, "name" | "accent">,
+      {
+        push: (loc) => pushed.push(loc as { path: string }),
+      },
+    );
 
     bus.$emit(appEvents.tabNavigate, { id: "t1", page: "/form", query: { id: "2" } });
     expect(pushed).toEqual([{ path: "/form", query: { id: "2" } }]);
