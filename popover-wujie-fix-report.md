@@ -296,9 +296,13 @@ async function flow9PopoverSandbox() {
 
 ---
 
-## 附：本仓库当前状态（供 tu-design 侧对照）
+## 附：本仓库当前状态（供 tu-design 侧对照，2026-11-06 更新）
 
-- `packages/tu-design/src/components/ui/popover/Popover.vue` 已回滚为 0.5.2 上游原样
-  （未带入任何修复，`components.lock.json` hash 记账一致）
-- `packages/themes/package.json` `@tu-design/vue` `^0.5.2`；tokens/components lock 已对齐
-- dev 环境仍在运行（5175/7201-7204），可直接复现；`node scripts/stop.mjs` 可停
+- `@tu-design/vue` 已升级至 catalog `^0.5.8`（`pnpm-workspace.yaml`，`components.lock.json`
+  同步为 0.5.8，hash 记账一致）；本仓库仍未携带上述修复 patch，vendor
+  `Popover.vue` 保持上游原样（文件内无 `inWujie`/`sandboxActive` 等本地标记）
+- 本报告建议的 e2e 连带改动已被现有实现覆盖：`waitHttpReady("http://localhost:7204")`
+  已在 `scripts/e2e.mjs` 启动流程落地；`nav-item` 断言改为 `registeredTabAppCount()`
+  动态计数（注册表增减免维护）；链路 9 未加入，e2e 仍为 8 条链路
+- 端口以各 app `vite.config.ts` 为准：micro-host 5175 / micro-auth 7203 /
+  micro-app-demo 7204（早期 7201/7202 已随应用改名废弃）；`node scripts/stop.mjs` 可停

@@ -42,7 +42,7 @@ release. Add a tool name to select part of the graph. For example, run
 # 仓库结构与端口
 
 - wujie 微前端 monorepo（pnpm + Vite+）。apps：`micro-host`（宿主,5175）、`micro-auth`(7203)、`micro-app-demo`(7204)；端口全部为 vite.config.ts 里的 `server.port` 字面量 + `strictPort`（`scripts/stop.mjs`、`dev.mjs` 靠字面量发现端口，不支持变量拼装）。
-- packages：`wujie-kit`（wujie 事件/生命周期契约）、`store`（共享 pinia `defineStore` 定义）、`share`（分层公共库）、`themes`（token 单源）、`tu-design`、`config-{lint,typescript,vite}`。
+- packages：`wujie-kit`（wujie 事件/生命周期契约）、`store`（共享 pinia `defineStore` 定义）、`share`（分层公共库）、`themes`（token 单源）、`tu-design`、`templates`（micro-app 脚手架模板，`vp run new` 消费）、`config-{lint,typescript,vite}`。
 - 依赖版本统一走 `pnpm-workspace.yaml` catalog（`catalogMode: prefer`）：新增依赖先进 catalog，包内用 `catalog:` 引用。
 
 # 常用命令

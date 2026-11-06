@@ -28,7 +28,7 @@ vp run -r build
 vp run dev
 ```
 
-- Run the browser E2E smoke(10 条链路,依赖全局 agent-browser):
+- Run the browser E2E smoke(8 条链路,依赖全局 agent-browser):
 
 自动启动/停止 dev 进程并清理同端口残留,与手动 dev 并行运行时互杀属预期行为。
 
@@ -46,5 +46,5 @@ vp run e2e
 ```
 
 - host(`apps/micro-host`):`initWujie` + `createHostStoreSync`,负责广播快照
-- 子应用(`apps/micro-app-a` / `apps/micro-app-b`):mount 回调内 `createSubStoreSync({ pinia })`,负责水合与监听
+- 子应用(`apps/micro-auth` / `apps/micro-app-demo`):mount 回调内 `createSubStoreSync({ pinia })`,负责水合与监听
 - 契约:`packages/wujie-kit`(`appEvents.state`)+ `packages/store`(`useThemeStore` / `useUserStore` / `createSubStoreSync`)
