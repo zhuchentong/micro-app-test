@@ -10,6 +10,7 @@ export type {
   BroadcastPayload,
   HostStatePayload,
   MenuEntry,
+  MenuGroup,
   MenuReportPayload,
   TabNavigatePayload,
   TabOpenPayload,

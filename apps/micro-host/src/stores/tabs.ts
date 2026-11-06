@@ -215,13 +215,17 @@ function normalizeRestoredTabs(
 }
 
 /**
- * Tab 未回报标题时的兜底:注册菜单命中取菜单名,否则取路径末段首字母大写
+ * Tab 未回报标题时的兜底:注册菜单命中取菜单名,否则取路径末段首字母大写。
+ * 注册菜单为分组形状(MenuGroup[]),命中前先展平取叶子菜单项。
  * @param app 子应用 key
  * @param page 页面路径
  * @returns 兜底标题(真实名由子应用 tabTitle 回报后覆盖)
  */
 function defaultTitle(app: string, page: string): string {
-  const entry = registry.find((item) => item.key === app)?.menu.find((menu) => menu.path === page);
+  const entry = registry
+    .find((item) => item.key === app)
+    ?.menu.flatMap((group) => group.children)
+    .find((menu) => menu.path === page);
   if (entry) return entry.label;
   // 未注册页面(如详情 /product):取末段占位,真实名由子应用 tabTitle 回报
   const segment = page.split("/").filter(Boolean).at(-1) ?? "首页";

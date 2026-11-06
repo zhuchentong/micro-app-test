@@ -3,8 +3,8 @@
  * agent-browser 驱动的浏览器 E2E smoke(8 条链路,适配 workspace 布局重设计 v3.1)。
  *
  * 单应用形态:micro-app-demo 是唯一 tab 子应用(micro-app-demo),跨应用保活切换、
- * 多 app 图标导航/浮层菜单场景不再被本 smoke 覆盖;链路 4 的保活切换改为
- * 同应用双 Tab(布局演示 ↔ 表格页,tabKey=app|page 仍为独立保活实例,语义等价)。
+ * 多 app 图标导航/面板菜单场景不再被本 smoke 覆盖;链路 4 的保活切换改为
+ * 同应用双 Tab(页面布局 ↔ 表格布局,tabKey=app|page 仍为独立保活实例,语义等价)。
  *
  * 用法: node scripts/e2e.mjs   (或仓库根 `vp run e2e`)
  * 前提: 全局安装 agent-browser(>=0.39);缺失时 fail-fast 并给出安装指引。
@@ -26,8 +26,10 @@
  * 新布局 DOM 契约(v3.1):
  *   .tabs-bar(常驻标签栏)> .tab-item(激活含 .tab-item--active,cold 标记冷实例,
  *   内含 .tab-title/.tab-close);.icon-nav(workspace 图标侧栏)> .nav-item
- *   (每子应用一个);hover 浮层 .nav-popover > .popover-item(data-menu-index,
- *   顺序 = 子应用 menus 数组;mouseenter 触发,.nav-popover--open 强制显示);
+ *   (每子应用一个,点击图标切换全高子菜单面板);.nav-mask(fixed 全页遮罩,面板
+ *   打开时存在,点遮罩收起);.nav-panel > .panel-group
+ *   (.panel-group-title 分组标题 + .panel-links > .panel-link 菜单项,
+ *   data-menu-index 为跨分组扁平序号;Esc/点遮罩/点击面板外/焦点入 iframe 收起);
  *   .focus-mode(专注模式)/ .breadcrumb / .pane-stage;blank 布局下 .fab 返回、
  *   .tabs-bar v-show 隐藏、.icon-nav 随 workspace 布局组件卸载消失
  *
@@ -217,56 +219,36 @@ function expect(name, actual, expected) {
 }
 
 /**
- * 点击图标导航项。.nav-item 顺序 = 子应用注册表顺序(manifest key 排序),
- * 点击即打开该子应用默认页;host 侧无 iframe 覆盖,原生 click 可用
+ * 点击图标弹出子菜单面板并点击指定菜单项。面板由点击触发(v-if 渲染),
+ * 旧 hover 浮层(mouseenter + 强制 open class)已随 UI 改造移除,现分三步:
+ *   ① eval JS click 第 navIndex 个 .nav-item(点击切换面板;host 侧无 iframe 覆盖)
+ *   ② waitFn 等待 .nav-panel 可见且含目标 data-menu-index 的 .panel-link,
+ *      并断言 .nav-mask 已挂载(遮罩随面板同 v-if 出现,防其回归消失)
+ *   ③ eval JS click 目标 .panel-link;点击后面板随 openFromMenu 收起,
+ *      后续等待只依赖 Tab/路由断言,不依赖面板常驻
  *
- * @param {number} index 导航项下标
+ * @param {number} navIndex .nav-item 下标(子应用注册表顺序)
+ * @param {number} menuIndex 面板内菜单扁平序号(panel-link 的 data-menu-index,跨分组连续编号)
  * @returns {Promise<Record<string, unknown>>} { clicked: boolean }
  */
-function clickNavItem(index) {
-  return evalJson(
-    `(() => { const nav = document.querySelectorAll('.nav-item')[${index}];` +
+async function clickPanelItem(navIndex, menuIndex) {
+  const triggered = await evalJson(
+    `(() => { const nav = document.querySelectorAll('.nav-item')[${navIndex}];` +
       " if (!nav) return { clicked: false };" +
       " nav.click(); return { clicked: true }; })()",
   );
-}
-
-/**
- * 展开 .nav-item 浮层并点击指定菜单项。浮层 hover 触发为异步渲染,分三步:
- *   ① eval 先清理遗留的强制 open class(避免误点其他应用残留浮层),
- *      再给目标 .nav-item 派发 mouseenter
- *   ② waitFn 等待目标 popover-item 出现在已展开浮层内
- *      (轮询期间补 .nav-popover--open,防浮层被收起)
- *   ③ eval 点击前再次补 open class(防两次 CLI 往返间收起),保持展开后点击
- *
- * @param {number} navIndex .nav-item 下标(子应用注册表顺序)
- * @param {number} menuIndex 浮层内菜单下标(popover-item 的 data-menu-index)
- * @returns {Promise<Record<string, unknown>>} { clicked: boolean }
- */
-async function clickPopoverItem(navIndex, menuIndex) {
-  const triggered = await evalJson(
-    "(() => { document.querySelectorAll('.nav-popover--open')" +
-      ".forEach(p => p.classList.remove('nav-popover--open'));" +
-      ` const nav = document.querySelectorAll('.nav-item')[${navIndex}];` +
-      " if (!nav) return { ok: false };" +
-      " nav.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));" +
-      " return { ok: true }; })()",
-  );
-  if (!triggered.ok) return { clicked: false };
+  if (!triggered.clicked) return { clicked: false };
   await waitFn(
-    "(() => { const p = [...document.querySelectorAll('.nav-popover')]" +
-      ".find(x => x.classList.contains('nav-popover--open'));" +
-      " if (p) p.classList.add('nav-popover--open');" +
-      ` return !!p && [...p.querySelectorAll('.popover-item')].some(x => x.dataset.menuIndex === '${menuIndex}'); })()`,
-    `nav 浮层展开(应用 ${navIndex} 菜单 ${menuIndex})`,
+    "(() => { const p = document.querySelector('.nav-panel');" +
+      " return !!p && p.offsetParent !== null" +
+      " && !!document.querySelector('.nav-mask')" +
+      " && [...p.querySelectorAll('.panel-link')]" +
+      `.some(x => x.dataset.menuIndex === '${menuIndex}'); })()`,
+    `nav 面板展开(应用 ${navIndex} 菜单 ${menuIndex})`,
   );
   return evalJson(
-    "(() => { const p = [...document.querySelectorAll('.nav-popover')]" +
-      ".find(x => x.classList.contains('nav-popover--open'));" +
-      " if (!p) return { clicked: false };" +
-      " p.classList.add('nav-popover--open');" +
-      " const item = [...p.querySelectorAll('.popover-item')]" +
-      `.find(x => x.dataset.menuIndex === '${menuIndex}');` +
+    "(() => { const item = document.querySelector" +
+      `('.nav-panel .panel-link[data-menu-index="${menuIndex}"]');` +
       " if (!item) return { clicked: false };" +
       " item.click(); return { clicked: true }; })()",
   );
@@ -476,14 +458,15 @@ async function flow1HostLoaded() {
 }
 
 /**
- * 链路 2:图标导航开 Tab(micro-app-demo 布局演示):激活态/地址栏自管/标题回报
+ * 链路 2:图标导航面板开 Tab(micro-app-demo 首页):激活态/地址栏自管/标题回报
+ * 点击图标仅弹面板(不再直接开首页),开 Tab 统一走面板菜单项(data-menu-index=0)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
 async function flow2OpenTab() {
-  console.log("[链路 2] 图标导航开 Tab(micro-app-demo 布局演示)");
-  const clicked = await clickNavItem(0);
-  expect("导航项可点击", clicked.clicked, true);
+  console.log("[链路 2] 图标导航面板开 Tab(micro-app-demo 首页)");
+  const opened = await clickPanelItem(0, 0);
+  expect("导航面板菜单打开首页 Tab", opened.clicked, true);
   await waitFn(
     "document.querySelectorAll('.tab-item').length === 1 && !!document.querySelector('.tab-item--active')",
     "Tab 激活",
@@ -492,12 +475,12 @@ async function flow2OpenTab() {
   const state = await evalJson(
     "(() => ({ url: location.pathname," +
       " tabs: document.querySelectorAll('.tab-item').length," +
-      " activeHome: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('布局演示')," +
+      " activeHome: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('页面布局')," +
       " title: document.title.includes('测试 Demo') }))()",
   );
   expect("地址栏自管 /micro-app-demo", state.url, "/micro-app-demo");
   expect("Tab 数 = 1", state.tabs, 1);
-  expect("激活 Tab 标题含 布局演示", state.activeHome, true);
+  expect("激活 Tab 标题含 首页菜单文案", state.activeHome, true);
   expect("document.title 回报生效", state.title, true);
 }
 
@@ -543,7 +526,7 @@ async function flow3RenderAndSync() {
 }
 
 /**
- * 链路 4:保活(计数 3 → 浮层菜单切表格页 → 切回计数保留;同应用双 Tab,
+ * 链路 4:保活(计数 3 → 面板菜单切表格页 → 切回计数保留;同应用双 Tab,
  * tabKey=app|page,仍为独立保活实例)
  *
  * @returns {Promise<void>} 断言结果写入报告
@@ -564,15 +547,15 @@ async function flow4KeepAlive() {
       " return !!m && m[1] === '3'; })()",
     "计数到达 3",
   );
-  const toTable = await clickPopoverItem(0, 1);
-  expect("浮层菜单切到 表格页 Tab", toTable.clicked, true);
+  const toTable = await clickPanelItem(0, 1);
+  expect("面板菜单切到 表格布局 Tab", toTable.clicked, true);
   await waitFn(
     "document.querySelectorAll('.tab-item').length === 2 && location.pathname === '/micro-app-demo/table'",
     "表格页 Tab 激活",
   );
   await waitAppText("查 询");
-  const back = await clickTabByTitle("布局演示");
-  expect("切回布局演示 Tab", back.clicked, true);
+  const back = await clickTabByTitle("页面布局");
+  expect("切回页面布局 Tab", back.clicked, true);
   await waitFn("location.pathname === '/micro-app-demo'", "切回就绪");
   const counter = await evalJson(
     "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
@@ -585,14 +568,14 @@ async function flow4KeepAlive() {
 
 /**
  * 链路 5:子应用内导航 → tabOpen 新开 Tab(智能手表 Pro #101)
- * 入口改走图标导航浮层(micro-app-demo 图标 → data-menu-index=3 「产品」)
+ * 入口改走图标导航面板(micro-app-demo 图标 → data-menu-index=3 「产品」)
  *
  * @returns {Promise<void>} 断言结果写入报告
  */
 async function flow5TabOpen() {
   console.log("[链路 5] 子应用内导航 → tabOpen 新开 Tab");
-  const toProducts = await clickPopoverItem(0, 3);
-  expect("浮层菜单打开 micro-app-demo 产品 Tab", toProducts.clicked, true);
+  const toProducts = await clickPanelItem(0, 3);
+  expect("面板菜单打开 micro-app-demo 产品 Tab", toProducts.clicked, true);
   await waitFn("location.pathname === '/micro-app-demo/products'", "产品 Tab 激活");
   await waitAppText("产品列表");
   const clicked = await jsClickInActiveApp(

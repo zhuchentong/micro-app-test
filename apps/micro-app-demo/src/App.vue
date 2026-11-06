@@ -15,7 +15,8 @@ if (appConfig.menu) appBus.reportMenu(appConfig.menu);
  * @returns Tab 标题文本
  */
 function pageTitle(path: string): string {
-  const menu = appConfig.menu ?? [];
+  // 菜单为分组形状(三级导航:图标 → 分组 → 菜单项),标题命中只消费叶子菜单项,先展平
+  const menu = appConfig.menu?.flatMap((group) => group.children) ?? [];
   const hit = [...menu]
     .filter((item) => path.startsWith(item.path))
     .sort((a, b) => b.path.length - a.path.length)[0];

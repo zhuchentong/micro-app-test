@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { createRequire } from "node:module";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+// 仅类型引用(bus 契约单源):运行时零依赖,注册表聚合不引入 wujie-kit 运行时代码
+import type { MenuGroup } from "@repo/wujie-kit";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "@vizejs/vite-plugin/vite-plus";
 import Icons from "unplugin-icons/vite";
@@ -96,7 +98,8 @@ export interface MicroAppRegistryEntry {
   key: string;
   name: string;
   accent: string;
-  menu?: Array<{ label: string; path: string; query?: Record<string, string> }>;
+  // 菜单形状直接引用 bus 契约类型,避免 host 注册表与 wujie-kit 各自维护一份重复形状
+  menu?: MenuGroup[];
   mode?: "tab" | "gateway";
   /** 从 apps/<name>/vite.config.ts 提取的 server.port 字面量 */
   port: number;

@@ -234,14 +234,19 @@ test("reportMenu 以 props.tab.app 上报菜单,无 tab props 时 no-op", () => 
       MicroAppManifest,
       "name" | "accent"
     >);
-    bus.reportMenu([{ label: "首页", path: "/" }]);
+    bus.reportMenu([{ label: "导航", children: [{ label: "首页", path: "/" }] }]);
     expect(emitted).toEqual([
-      { event: appEvents.menu, data: { app: "sub-a", menu: [{ label: "首页", path: "/" }] } },
+      {
+        event: appEvents.menu,
+        data: { app: "sub-a", menu: [{ label: "导航", children: [{ label: "首页", path: "/" }] }] },
+      },
     ]);
 
     // 无 tab props(独立运行/单容器遗留):no-op 不抛错
     globalAny.window = { $wujie: { props: {}, bus: { $emit: () => {} } } };
-    expect(() => bus.reportMenu([{ label: "首页", path: "/" }])).not.toThrow();
+    expect(() =>
+      bus.reportMenu([{ label: "导航", children: [{ label: "首页", path: "/" }] }]),
+    ).not.toThrow();
     expect(emitted).toHaveLength(1);
   } finally {
     globalAny.window = originalWindow;

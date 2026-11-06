@@ -44,6 +44,10 @@ export const neutralPalette = {
   n600: "#738c9c",
   text2: "#55707f",
   text1: "#12304a",
+  // 全页遮罩:子菜单面板打开时盖内容区(设计稿 327:319 Rectangle 1 黑 50%);
+  // 暗色略深一档,保证暗色亮卡面下的遮盖力。hex8 沿用仓库"同色低透明"惯例
+  overlay: "#00000080",
+  overlayDark: "#00000099",
 } as const;
 
 /** Semantic 状态族:实色 + 浅底成对;仅用于状态反馈,不做装饰 */
@@ -116,6 +120,8 @@ export const themeVars = [
   "--app-bg-tab-inactive",
   "--app-header-bg",
   "--app-border",
+  // 全页遮罩:面板打开时盖标签栏+内容区,侧栏与面板悬浮其上(消费方 workspace 布局)
+  "--app-overlay",
   // 文本
   "--app-text-1",
   "--app-text-2",
@@ -181,6 +187,7 @@ export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
     "--app-bg-tab-inactive": neutralPalette.n25,
     "--app-header-bg": neutralPalette.white,
     "--app-border": neutralPalette.border,
+    "--app-overlay": neutralPalette.overlay,
     "--app-text-1": neutralPalette.text1,
     "--app-text-2": neutralPalette.text2,
     "--app-text-3": neutralPalette.n600,
@@ -214,6 +221,8 @@ export const themePresets: Record<ThemeMode, ThemeTokenValues> = {
     "--app-bg-tab-inactive": darkSurface.canvas,
     "--app-header-bg": darkSurface.surface,
     "--app-border": darkSurface.border,
+    // 遮罩明暗同源(neutralPalette),暗色取深一档 primitive
+    "--app-overlay": neutralPalette.overlayDark,
     "--app-text-1": darkSurface.text1,
     "--app-text-2": darkSurface.text2,
     "--app-text-3": darkSurface.text3,

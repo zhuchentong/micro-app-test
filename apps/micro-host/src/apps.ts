@@ -1,14 +1,14 @@
-import type { MenuEntry, MicroApp } from "@repo/wujie-kit";
+import type { MenuGroup, MicroApp } from "@repo/wujie-kit";
 import { microAppEntries } from "virtual:micro-app-registry";
 
-// 菜单项形状上移到 bus 契约(host 静态兜底与子应用上报共用同一类型)
-export type { MenuEntry } from "@repo/wujie-kit";
+// 菜单形状上移到 bus 契约(host 静态兜底与子应用上报共用同一类型)
+export type { MenuEntry, MenuGroup } from "@repo/wujie-kit";
 
 import type { LayoutName } from "./stores/layout";
 
 /** host 注册表条目:子应用元信息 + 侧栏菜单 + 布局偏好 */
 export interface HostApp extends MicroApp {
-  menu: MenuEntry[];
+  menu: MenuGroup[];
   /** 该子应用的默认布局:打开新 Tab 时应用;已有 Tab 之间的激活不改变布局 */
   defaultLayout: LayoutName;
 }

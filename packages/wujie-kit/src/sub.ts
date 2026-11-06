@@ -4,7 +4,7 @@ import { appEvents } from "./events";
 import type {
   AuthLoginPayload,
   BroadcastPayload,
-  MenuEntry,
+  MenuGroup,
   MenuReportPayload,
   TabNavigatePayload,
   TabOpenPayload,
@@ -59,7 +59,7 @@ export interface SubBus {
   /** 子应用 → 主应用:回报 Tab 标题(host 仅信任激活 Tab;非 wujie 环境无操作) */
   syncTabTitle(title: string): void;
   /** 子应用 → 主应用:上报侧栏菜单(覆盖 host 静态兜底;非 wujie 环境无操作) */
-  reportMenu(menu: MenuEntry[]): void;
+  reportMenu(menu: MenuGroup[]): void;
   /** 子应用 → 主应用:登录成功上报(授权网关校验通过;非 wujie 环境无操作) */
   reportLogin(user: { id: string; name: string }): void;
 }
@@ -154,7 +154,7 @@ export function createBus(config: SubAppIdentity): SubBus {
       const payload: TabTitlePayload = { id: tab.id, title };
       window.$wujie?.bus?.$emit(appEvents.tabTitle, payload);
     },
-    reportMenu(menu: MenuEntry[]): void {
+    reportMenu(menu: MenuGroup[]): void {
       const tab = currentTab();
       if (!tab) return;
       const payload: MenuReportPayload = { app: tab.app, menu };

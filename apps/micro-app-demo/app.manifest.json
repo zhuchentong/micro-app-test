@@ -3,9 +3,15 @@
   "name": "测试 Demo",
   "accent": "#722ed1",
   "menu": [
-    { "label": "布局演示", "path": "/" },
-    { "label": "表格页", "path": "/table" },
-    { "label": "表单页", "path": "/form" },
-    { "label": "产品", "path": "/products" }
+    {
+      "label": "示例",
+      "icon": "dashboard",
+      "children": [
+        { "label": "页面布局", "path": "/" },
+        { "label": "表格布局", "path": "/table" },
+        { "label": "表单页", "path": "/form" },
+        { "label": "产品", "path": "/products" }
+      ]
+    }
   ]
 }

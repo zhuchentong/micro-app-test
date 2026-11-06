@@ -26,12 +26,16 @@ function navActive(path: string): boolean {
  * @returns Tab 标题文本
  */
 function pageTitle(path: string): string {
-  const menu = appConfig.menu ?? [];
+  // 菜单为分组形状(三级导航:图标 → 分组 → 菜单项),标题命中只消费叶子菜单项,先展平
+  const menu = appConfig.menu?.flatMap((group) => group.children) ?? [];
   const hit = [...menu]
     .filter((item) => path.startsWith(item.path))
     .sort((a, b) => b.path.length - a.path.length)[0];
   return hit ? `${appConfig.name} · ${hit.label}` : appConfig.name;
 }
+
+/** 头部导航项:分组菜单展平后的叶子项(本应用头部只渲染叶子;分组层由 host 侧栏消费) */
+const navItems = (appConfig.menu ?? []).flatMap((group) => group.children);
 
 // 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
 if (appConfig.menu) appBus.reportMenu(appConfig.menu);
@@ -56,7 +60,7 @@ watch(
       <nav>
         <!-- 非锚点导航:wujie shadow 内 <a> href 会被绝对化到子应用 origin,修饰键/中键点击会跳出宿主 -->
         <Button
-          v-for="item in appConfig.menu ?? []"
+          v-for="item in navItems"
           :key="item.path"
           type="button"
           variant="ghost"

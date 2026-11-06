@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@iconify-json/tdesign": "catalog:",
+    "@repo/wujie-kit": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@vizejs/vite-plugin": "catalog:",
     "pinia": "catalog:",

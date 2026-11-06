@@ -91,11 +91,20 @@ export interface MenuEntry {
   query?: Record<string, string>;
 }
 
+/** 侧栏菜单分组(三级导航中间层:图标 → 分组 → 菜单项) */
+export interface MenuGroup {
+  label: string;
+  /** 图标名(host 侧静态映射解析,缺省回退应用导航图标) */
+  icon?: string;
+  /** 组内菜单项 */
+  children: MenuEntry[];
+}
+
 /** sub:menu 事件 payload;host 按 app key 覆盖静态兜底菜单,重复上报幂等 */
 export interface MenuReportPayload {
   /** 注册表 app key(来自注入的 props.tab.app) */
   app: string;
-  menu: MenuEntry[];
+  menu: MenuGroup[];
 }
 
 /** sub:auth-login 事件 payload;授权网关校验通过后上报,host 校验 user 非空才写入 */

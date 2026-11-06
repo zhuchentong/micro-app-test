@@ -1,4 +1,4 @@
-import type { MenuEntry } from "./events";
+import type { MenuGroup } from "./events";
 
 /** 主/子应用 bus 最小结构接口(wujie 导出的 bus 结构兼容,必要时由调用方断言) */
 export interface SyncBus {
@@ -28,7 +28,7 @@ export interface MicroAppManifest {
   /** 主题强调色:host 注册表 color 与子应用 accent 的单源 */
   accent: string;
   /** 侧栏菜单:既是 host 静态兜底也是子应用上报内容(上报按 key 幂等覆盖);缺省 = 无菜单 */
-  menu?: MenuEntry[];
+  menu?: MenuGroup[];
   /** 应用形态:缺省/"tab" = 进 Tab 注册表;"gateway" = 全屏网关(不进 Tab 注册表,如授权网关) */
   mode?: "tab" | "gateway";
 }
