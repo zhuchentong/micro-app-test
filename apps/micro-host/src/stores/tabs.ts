@@ -236,9 +236,9 @@ export const useTabsStore = defineStore("tabs", {
       if (saved) {
         // seq 必须覆盖已有 tab.n,避免重建 tab-container-N 撞号
         this.seq = Math.max(saved.seq, ...saved.tabs.map((tab) => tab.n), 0);
-        // S1 归一化,必须先于下方 parseTabUrl 匹配:漂移记录(如身份 sub-a|/| 的内容
-        // 已漂到 /table)若先参与 URL 匹配,直访 /sub-a 会按旧身份命中僵尸并激活漂移
-        // 内容(地址栏被改写为 /sub-a/table),归一化放在匹配之后就修不回去了。
+        // S1 归一化,必须先于下方 parseTabUrl 匹配:漂移记录(如身份 micro-app-demo|/| 的内容
+        // 已漂到 /table)若先参与 URL 匹配,直访 /micro-app-demo 会按旧身份命中僵尸并激活漂移
+        // 内容(地址栏被改写为 /micro-app-demo/table),归一化放在匹配之后就修不回去了。
         // 先归一化,URL 按 canonical 匹配不到漂移身份 → 新建干净 Tab 激活。
         const normalized = normalizeRestoredTabs(saved.tabs, saved.activeId);
         this.tabs = normalized.tabs;

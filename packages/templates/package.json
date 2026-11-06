@@ -1,6 +1,6 @@
 {
   "name": "@repo/templates",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "micro-app 脚手架模板单源(package version 即模板版本,生成器写入 scaffold.lock.json;模板本体在 micro-app/,哨兵替换见 scripts/create-micro-app.mjs)",
   "type": "module",

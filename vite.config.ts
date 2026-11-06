@@ -39,7 +39,7 @@ export default defineConfig({
       "**/public/libs/**",
     ],
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
-    // @repo/share 分层依赖方向:common ← ui ← components,禁止反向/跨层引用
+    // @repo/share 分层依赖方向:common ← composables ← ui ← components,禁止反向/跨层引用
     overrides: [
       {
         files: ["packages/share/src/common/**"],
@@ -47,10 +47,37 @@ export default defineConfig({
           "no-restricted-imports": [
             "error",
             {
-              paths: ["vue", "@repo/store", "@repo/share/ui", "@repo/share/components"],
+              paths: [
+                "vue",
+                "@repo/store",
+                "@repo/share/composables",
+                "@repo/share/ui",
+                "@repo/share/components",
+              ],
               patterns: [
                 "vue/*",
                 "@repo/store/*",
+                "@repo/share/composables/*",
+                "@repo/share/ui/*",
+                "@repo/share/components/*",
+                "../composables/**",
+                "../ui/**",
+                "../components/**",
+                "**/*.vue",
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // composables 层:可依赖 vue/vue-router/store/common;禁止依赖 ui/components 与 .vue
+        files: ["packages/share/src/composables/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: ["@repo/share/ui", "@repo/share/components"],
+              patterns: [
                 "@repo/share/ui/*",
                 "@repo/share/components/*",
                 "../ui/**",

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { routes } from "vue-router/auto-routes";
+import { useHostProps } from "@repo/wujie-kit/sub";
 
 /**
  * 平路由:页面以自身根元素作为页面根。
@@ -10,6 +11,15 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+// wujie 同 app 多实例竞态兜底:沙箱 location 代理在实例快速连续启动时可能滞后
+// (前一实例刚写 "/"),本实例 router 的初始导航会读到错误路径,渲染成别的页面后
+// 永不纠正(replaceState 不触发 popstate)。用 host 注入的 tab.page 显式对齐初始
+// 路由;独立运行(无 $wujie/tab)时无此问题,跳过。
+const intendedTab = useHostProps()?.tab;
+if (intendedTab) {
+  void router.replace({ path: intendedTab.page });
+}
 
 export default router;
 

@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { isWujie, useHostProps } from "@repo/wujie-kit/sub";
-import { useUserStore } from "@repo/store";
+import { useThemeStore, useUserStore } from "@repo/store";
 import { PageContainer } from "@repo/share/ui/PageContainer";
 import { openTab } from "../bus";
+import Counter from "../components/Counter.vue";
 
 // props 是 startApp 时注入的一次性快照,此后不再更新
 const props = useHostProps();
 const userStore = useUserStore();
+const themeStore = useThemeStore();
 
 const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应用数据)");
 </script>
@@ -44,7 +46,14 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
           <dd>{{ injectedUser }}</dd>
           <dt>实时用户</dt>
           <dd>{{ userStore.user.name || "—" }}</dd>
+          <dt>实时主题</dt>
+          <dd>{{ themeStore.theme }}</dd>
         </dl>
+      </Card>
+
+      <Card size="sm" title="保活计数">
+        <p class="hint">点击 +1 后切换到其他 Tab 再切回,计数保留说明 wujie 保活生效。</p>
+        <Counter />
       </Card>
 
       <Card size="sm" title="Popover shadow DOM 适配验证">

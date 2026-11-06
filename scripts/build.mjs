@@ -4,7 +4,7 @@
  *
  * 用法:
  *   node scripts/build.mjs                 # 构建全部应用
- *   node scripts/build.mjs micro-app-a       # 只构建指定应用(可传多个)
+ *   node scripts/build.mjs micro-app-demo       # 只构建指定应用(可传多个)
  *
  * 特性:
  * - 自动发现:apps/<dir>/package.json 含 build 脚本即纳入,新增应用零改动

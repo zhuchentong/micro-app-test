@@ -1,9 +1,0 @@
-{
-  "key": "sub-b",
-  "name": "子应用 B",
-  "accent": "#52c41a",
-  "menu": [
-    { "label": "首页", "path": "/" },
-    { "label": "通信演示", "path": "/about" }
-  ]
-}

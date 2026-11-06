@@ -2,7 +2,6 @@
 defineOptions({ name: "WorkspaceLayout" });
 import { computed, ref } from "vue";
 import IconDashboard from "~icons/tdesign/dashboard";
-import IconUser from "~icons/tdesign/user";
 import { apps } from "../apps";
 import type { HostApp, MenuEntry } from "../apps";
 import { useMenuStore } from "../stores/menu";
@@ -38,8 +37,7 @@ const hoveredApp = ref<string | null>(null);
 
 /** 子应用 → 导航图标的静态映射(按需 import,禁动态字符串拼接) */
 const navIcons: Record<string, unknown> = {
-  "sub-a": IconDashboard,
-  "sub-b": IconUser,
+  "micro-app-demo": IconDashboard,
 };
 
 function navIcon(app: HostApp): unknown {

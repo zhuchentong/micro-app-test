@@ -9,9 +9,9 @@ beforeEach(() => {
 test("add 最新在前且 id 自增", () => {
   const logs = useLogsStore();
   logs.add("host", "第一条");
-  logs.add("sub-a", "第二条");
+  logs.add("micro-app-demo", "第二条");
   expect(logs.entries).toHaveLength(2);
-  expect(logs.entries[0]).toMatchObject({ source: "sub-a", text: "第二条" });
+  expect(logs.entries[0]).toMatchObject({ source: "micro-app-demo", text: "第二条" });
   expect(logs.entries[1]).toMatchObject({ source: "host", text: "第一条" });
   expect(logs.entries[0].id).toBeGreaterThan(logs.entries[1].id);
   expect(typeof logs.entries[0].time).toBe("string");

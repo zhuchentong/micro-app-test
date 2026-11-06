@@ -12,7 +12,7 @@
  *
  * --host 转发给各 app 的 vp dev(无值 = 监听所有地址);裸 --host 紧跟已知应用名时
  * 按位置参数处理(应用名与主机名空间不相交,无歧义):
- *   nr dev --host micro-app-a ≡ nr dev micro-app-a --host
+ *   nr dev --host micro-app-demo ≡ nr dev micro-app-demo --host
  *
  * 宿主识别:package.json 的 dependencies 含 wujie。
  * 端口提示:提取 vite.config.ts 中 server.port 字面量(与 stop.mjs 相同规则)。
@@ -175,7 +175,7 @@ function fuzzyMatch(search, text) {
 // --host 转发给各 app 的 vp dev(vite 语义:无值 = 监听所有地址),其余 - 开头选项不支持。
 // --allow-lan 为布尔开关,解析完成后等价注入裸 --host(显式 --host 优先,不覆盖其值)。
 // 裸 --host 在 vite 语义下会吞掉紧跟的 token;此处当下一 token 是已知应用名时按位置参数处理:
-//   nr dev --host micro-app-a ≡ nr dev micro-app-a --host
+//   nr dev --host micro-app-demo ≡ nr dev micro-app-demo --host
 const args = process.argv.slice(2);
 const hostArgs = [];
 const nameArgs = [];

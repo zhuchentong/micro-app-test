@@ -2,8 +2,8 @@
 import { watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useUserStore } from "@repo/store";
-import { appConfig } from "./app.config";
-import { subBus } from "./bus";
+import { appConfig } from "./config/app.config";
+import { subBus } from "./core/micro-sub";
 
 const route = useRoute();
 const router = useRouter();

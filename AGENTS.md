@@ -41,14 +41,14 @@ release. Add a tool name to select part of the graph. For example, run
 
 # 仓库结构与端口
 
-- wujie 微前端 monorepo（pnpm + Vite+）。apps：`micro-host`（宿主,5175）、`micro-app-a`(7201)、`micro-app-b`(7202)、`micro-auth`(7203)、`micro-app-demo`(7204)；端口全部为 vite.config.ts 里的 `server.port` 字面量 + `strictPort`（`scripts/stop.mjs`、`dev.mjs` 靠字面量发现端口，不支持变量拼装）。
+- wujie 微前端 monorepo（pnpm + Vite+）。apps：`micro-host`（宿主,5175）、`micro-auth`(7203)、`micro-app-demo`(7204)；端口全部为 vite.config.ts 里的 `server.port` 字面量 + `strictPort`（`scripts/stop.mjs`、`dev.mjs` 靠字面量发现端口，不支持变量拼装）。
 - packages：`wujie-kit`（wujie 事件/生命周期契约）、`store`（共享 pinia `defineStore` 定义）、`share`（分层公共库）、`themes`（token 单源）、`tu-design`、`config-{lint,typescript,vite}`。
 - 依赖版本统一走 `pnpm-workspace.yaml` catalog（`catalogMode: prefer`）：新增依赖先进 catalog，包内用 `catalog:` 引用。
 
 # 常用命令
 
 - 全量验证：`vp run ready`（= `vp check` + 全仓 test + build）。
-- dev：`vp run dev` 为交互启动器（非 TTY 时全启；先子应用后 host）。直达模式 `node scripts/dev.mjs micro-app-a`（名字含宿主即自动带宿主）、`--all`、`--host`。dev 启动前有端口预检，会先 stop 本仓库残留进程——与手动 dev 并行互杀属预期。
+- dev：`vp run dev` 为交互启动器（非 TTY 时全启；先子应用后 host）。直达模式 `node scripts/dev.mjs micro-app-demo`（名字含宿主即自动带宿主）、`--all`、`--host`。dev 启动前有端口预检，会先 stop 本仓库残留进程——与手动 dev 并行互杀属预期。
 - 停全部 dev 服务：`vp run stop`（仅 Linux；按 /proc cwd 护栏只杀本仓库进程）。
 - 测试：包目录内 `vp test`；全仓 `vp run -r test`。
 - E2E smoke：`vp run e2e`，前提全局安装 agent-browser（>=0.39）；子应用区域必须用 eval JS click（wujie iframe 覆盖导致原生 click 被拒），等待用 `wait --text/--fn` 不用固定 sleep（详见 `scripts/e2e.mjs` 头注释）。
@@ -60,7 +60,7 @@ release. Add a tool name to select part of the graph. For example, run
 
 # 架构约束（lint 强制，配置在根 vite.config.ts）
 
-- `@repo/share` 分层依赖：`common ← ui ← components`，禁止反向/跨层引用；`common` 还禁止 import vue、`@repo/store`、任何 `.vue`（`no-restricted-imports` override）。
+- `@repo/share` 分层依赖：`common ← composables ← ui ← components`，禁止反向/跨层引用；`common` 还禁止 import vue、`@repo/store`、任何 `.vue`；`composables` 可依赖 vue/vue-router/store/common，禁止依赖 ui/components 与任何 `.vue`（`no-restricted-imports` override）。
 - store 同步契约：host 是状态权威源（`host:state` 全量广播 + `rev` 判重 + `sub:state-request` 握手，契约类型在 `packages/wujie-kit`，同步器在 `packages/store`）。机制详见 README「Store 同步」；**新增需同步 store 的必改清单见 `packages/store/AGENTS.md`**。
 - staged 钩子分流：源码文件经 `scripts/staged-check.mjs` 过滤 vendor 区后走 fmt + lint（不跑完整 `vp check`：Corsa typecheck 文件参数模式会把 vendor 经依赖闭包拉进诊断）；纯 json/md/css/yaml 只 `vp run fmt -- --fix`；完整 typecheck 由 `vp run ready`（无参数 `vp check`，尊重 `lint.ignorePatterns`）把守。tu-design `components/ui/**` 是 registry vendor 区，不参与 check/fmt，避免升级被本地类型诊断拦截。
 - `stop` 任务必须 `cache: false`（停服命令绝不可缓存回放）；新增同类任务同理。

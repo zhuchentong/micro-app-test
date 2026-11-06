@@ -1,5 +1,6 @@
 /**
- * 主/子应用共享代码统一入口:公共函数(common)+ ui 组件全量导出。
+ * 主/子应用共享代码统一入口:公共函数(common)+ 组合式函数(composables)+ ui 组件全量导出。
+ * composables 层现仅目录约定(见 src/composables/README.md),首个组合函数落地时在此导出。
  * 业务组件不进此入口,按路径引入:`@repo/share/components/Xxx.vue`。
  *
  * ⚠️ share 包内测试纪律:本包测试环境为纯 TS(vitest 无 vue 插件),

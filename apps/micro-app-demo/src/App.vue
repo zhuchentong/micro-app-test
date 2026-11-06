@@ -9,13 +9,25 @@ const route = useRoute();
 // 菜单上报:mount 时执行一次;保活实例仅首挂上报,重复上报在 host 侧按 app key 幂等覆盖
 if (appConfig.menu) subBus.reportMenu(appConfig.menu);
 
+/**
+ * Tab 内页面标题:应用名 · menu 前缀最长命中(详情页等动态标题由页面自行上报覆盖)
+ * @param path 当前路由路径
+ * @returns Tab 标题文本
+ */
+function pageTitle(path: string): string {
+  const menu = appConfig.menu ?? [];
+  const hit = [...menu]
+    .filter((item) => path.startsWith(item.path))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  return hit ? hit.label : "首页";
+}
+
 /** Tab 内导航同步(替代 wujie sync):路由变化上报主应用,标题走 tab 契约 */
 watch(
   () => [route.path, route.query] as const,
   ([path, query]) => {
     subBus.syncTabRoute(path, query);
-    const name = path === "/table" ? "表格页" : path === "/form" ? "表单页" : "布局演示";
-    subBus.syncTabTitle(`${appConfig.name} · ${name}`);
+    subBus.syncTabTitle(`${appConfig.name} · ${pageTitle(path)}`);
   },
   { immediate: true },
 );
