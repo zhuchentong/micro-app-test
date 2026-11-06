@@ -1,7 +1,7 @@
 {
   "lockfileVersion": 1,
-  "version": "0.5.2",
+  "version": "0.5.8",
   "files": {
-    "src/tokens.css": "25d298b9ef3d7c1f24043ddb81804c8186b18734c5be9347bf927ca5f341e82b"
+    "src/tokens.css": "77e78c6813e62f13408144c19e94751c992ca3451117b73e5e078c55b4cf569f"
   }
 }

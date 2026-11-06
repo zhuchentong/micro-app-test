@@ -19,13 +19,19 @@
  * - 若未来出现「非 iframe 的 graft 型沙箱」，本探测无法覆盖，需追加该沙箱的 marker 信号
  */
 
-/** 组件 JS 是否运行在 iframe realm（wujie / iframe 型沙箱 / 普通 iframe 嵌入） */
+/**
+ * 组件 JS 是否运行在 iframe realm（wujie / iframe 型沙箱 / 普通 iframe 嵌入）。
+ * @returns 运行在 iframe realm 时返回 true，否则返回 false
+ */
 export function isInIframeRealm(): boolean {
   return typeof window !== "undefined" && window.self !== window.top;
 }
 
-/** 是否处于 wujie graft 沙箱（getRootNode/父链被 wujie patch 伪装，结构探测失效，
- *  依赖官方标记；wujie 在子应用脚本执行前注入，时序可靠） */
+/**
+ * 是否处于 wujie graft 沙箱（getRootNode/父链被 wujie patch 伪装，结构探测失效，
+ *  依赖官方标记；wujie 在子应用脚本执行前注入，时序可靠）。
+ * @returns 处于 wujie graft 沙箱时返回 true，否则返回 false
+ */
 export function isInWujie(): boolean {
   return (
     typeof window !== "undefined" &&

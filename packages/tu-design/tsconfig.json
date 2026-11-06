@@ -1,6 +1,7 @@
 {
   "extends": "@repo/config-typescript/base.json",
   "compilerOptions": {
+    "types": ["node"],
     // vendor 区(components/ui)保持 registry 原样:上游存在的未使用符号不在本地修复,
     // 包级关闭未使用检查,避免 pre-commit typecheck 拦截 tu-design 升级
     "noUnusedLocals": false,
@@ -10,5 +11,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/components/ui"]
 }

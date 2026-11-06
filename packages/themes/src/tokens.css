@@ -54,9 +54,10 @@
   --input: var(--app-border, oklch(0.922 0 0));
   --ring: var(--app-accent, oklch(0.708 0 0));
   --radius: 0.625rem;
-  /* 层叠序：表体 sticky < 表头 sticky < 浮层/弹窗（同级浮层按 DOM 挂载次序叠放） */
+  /* 层叠序：表体 sticky < 表头普通列 sticky(fill/virtual 表头钉住，z-20 由 TableRender theadThClass 提供)
+     < 表头 sticky < 浮层/弹窗（同级浮层按 DOM 挂载次序叠放；表头 fixed 列经 stickyStyle inline style 消费 --z-sticky-head） */
   --z-sticky: 10;
-  --z-sticky-head: 20;
+  --z-sticky-head: 30;
   --z-overlay: 50;
 }
 

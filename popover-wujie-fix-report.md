@@ -8,6 +8,22 @@
 
 ---
 
+## 0.5.3 实测结论（2026-11-04 更新，已在 glass 工作台复测）
+
+**0.5.3 修复有效，全链路通过**：`isInWujie` 检测 → 面板落 `#app` 容器 ✓；
+`isInIframeRealm` → `strategy: fixed` ✓；视口 1440×900 下 gap=9、`--y=641`（=触发器
+bottom 632.5 + gutter 8.5）、xCenterOff=0 像素级锚定 ✓；host 侧 body/absolute 回归 ✓；
+check/69 tests/5 apps build 全绿。
+
+**对问题 3 归因的修正**：本仓库进一步实测发现 wujie 同步的 iframe `innerHeight` 与
+主视口**一致**（577=577，同步的是视口尺寸而非容器尺寸），flip 判定空间并未错位——
+0.5.2 用户环境的偏移主因即问题 2（absolute 包含块错位），flip 在触发器位于视口上部时
+根本不触发。复测时矮窗口（577px）下深位触发器（bottom 633>577）翻转到 top 属**正常
+碰撞行为**（触发器真超视口，翻入视口内反而可见）。上游 0.5.3 不关 flip 的选择正确，
+无需再调整。
+
+---
+
 ## 问题 1（阻断）：shadow DOM 检测在 wujie 下永不命中 → 面板落入 iframe body
 
 ### 现象

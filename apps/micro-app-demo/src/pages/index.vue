@@ -15,8 +15,7 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
 <template>
   <PageContainer layout="default">
     <main class="page">
-      <section class="card">
-        <h2>PageContainer 布局验证清单</h2>
+      <Card size="sm" title="PageContainer 布局验证清单">
         <ul>
           <li>
             <strong>DefaultLayout(slot 模板)</strong>:当前页 ——
@@ -35,10 +34,9 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
             宿主内新开 Tab,独立运行回退本页跳转。
           </li>
         </ul>
-      </section>
+      </Card>
 
-      <section class="card">
-        <h2>运行状态</h2>
+      <Card size="sm" title="运行状态">
         <dl>
           <dt>运行模式</dt>
           <dd>{{ isWujie() ? "wujie 微前端" : "独立运行" }}</dd>
@@ -47,19 +45,32 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
           <dt>实时用户</dt>
           <dd>{{ userStore.user.name || "—" }}</dd>
         </dl>
-      </section>
+      </Card>
 
-      <section class="card">
-        <h2>Popover shadow DOM 适配验证</h2>
+      <Card size="sm" title="Popover shadow DOM 适配验证">
         <p class="hint">
           wujie shadow 沙箱下面板应自动降级到本子应用挂载容器（样式/主题变量继承完整），
           不落入主应用 body；独立运行时仍传送 body（行为不变）。
         </p>
         <Popover>
-          <button class="pop-trigger" type="button">打开 Popover</button>
+          <Button type="button" variant="outline">打开 Popover</Button>
           <template #content>气泡内容（shadow 内渲染）</template>
         </Popover>
-      </section>
+      </Card>
+
+      <Card size="sm" title="浮层沙箱定位推广验证（Select / Tooltip / DatePicker）">
+        <p class="hint">
+          wujie graft 下 strategy 默认 fixed（absolute 包含块错位修正），面板应锚定各自
+          触发器（gap≈8px、水平居中），且无 [wujie warn] getElementById 告警。
+        </p>
+        <div class="demo-row">
+          <Select :items="['选项甲', '选项乙', '选项丙']" placeholder="打开 Select" />
+          <Tooltip content="Tooltip 气泡（沙箱 fixed 定位）">
+            <Button type="button" variant="outline">悬停 Tooltip</Button>
+          </Tooltip>
+          <DatePicker placeholder="打开 DatePicker" />
+        </div>
+      </Card>
     </main>
   </PageContainer>
 </template>
@@ -71,19 +82,6 @@ const injectedUser = computed(() => props?.user.name ?? "独立运行(无主应�
   flex-direction: column;
   gap: var(--app-space-4);
   max-width: 640px;
-}
-
-.card {
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg);
-  padding: var(--app-space-4);
-  background: var(--app-bg-surface);
-}
-
-.card h2 {
-  margin: 0 0 var(--app-space-3);
-  font-size: var(--app-fs-h3);
-  font-weight: var(--app-fw-h3);
 }
 
 ul {
@@ -115,12 +113,10 @@ a {
   color: var(--app-accent);
 }
 
-.pop-trigger {
-  padding: 6px 14px;
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-lg, 8px);
-  background: var(--app-bg-surface);
-  color: var(--app-text-1, inherit);
-  cursor: pointer;
+.demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-3);
+  align-items: center;
 }
 </style>

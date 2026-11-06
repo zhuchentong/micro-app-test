@@ -8,6 +8,4 @@
  * 消费方(host/子应用)环境含 vue 插件,不受此限制。
  */
 export { formatDuration, formatClockTime } from "./common/format";
-export { default as StatusDot } from "./ui/StatusDot.vue";
-export { default as EmptyBlock } from "./ui/EmptyBlock.vue";
 export { PageContainer, DefaultLayout, TableLayout, FormLayout } from "./ui/PageContainer";

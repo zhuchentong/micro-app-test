@@ -1,30 +1,17 @@
 <script setup lang="ts">
-import PageHeader from "../PageHeader.vue";
-
 /**
- * 默认布局(纯 slot 模板):可选页面标题区 + 内容区。
+ * 默认布局(纯 slot 模板):内容区。
  *
  * - 填充模式由 layout 类型固有决定:default=随内容(min-height:100%,超高由外层
  *   滚动容器滚动);table/form=全高填充(height:100%,内部 flex 分配);
  * - App 级导航/用户信息由消费方自己的壳层(App.vue)负责,本组件只做页面级骨架;
- * - 与 table/form 形态对称:内容经默认 slot 进入,标题区 props/slots 可选。
+ * - 页面标题由 host 面包屑承担(Tab 标题经 syncTabTitle 上报),本布局不再渲染头部区。
  */
 defineOptions({ name: "DefaultLayout" });
-
-defineProps<{ title?: string }>();
 </script>
 
 <template>
   <div class="page-layout-default">
-    <!-- 空标题区(无 title 且无 description/actions)整块不渲染,避免留空条 -->
-    <PageHeader v-if="title || $slots.description || $slots.actions" :title="title">
-      <template v-if="$slots.description" #description>
-        <slot name="description" />
-      </template>
-      <template v-if="$slots.actions" #actions>
-        <slot name="actions" />
-      </template>
-    </PageHeader>
     <main class="default-content">
       <slot />
     </main>

@@ -29,6 +29,7 @@ catalog:
   "unplugin-vue-components": ^32.1.0
   "unplugin-auto-import": ^21.1.0
   "@iconify-json/tdesign": ^1.2.20
+  "@tu-design/vue": ^0.5.8
 overrides:
   vite@*: "catalog:"
 peerDependencyRules:

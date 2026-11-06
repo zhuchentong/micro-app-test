@@ -1,6 +1,7 @@
 import { startApp, destroyApp } from "wujie";
 import type { Pinia } from "pinia";
 import { createHostStoreSync, useThemeStore, useUserStore } from "@repo/store";
+import { appEvents } from "@repo/wujie-kit";
 import { startTabApp, tabInstanceName } from "@repo/wujie-kit/host";
 import { apps } from "./apps";
 import { configureTabOps } from "./stores/tabs";
@@ -102,6 +103,20 @@ export function initWujie(pinia: Pinia, bus: unknown): void {
         } catch (error) {
           console.error(`[wujie] Tab(${tab.id}) 销毁失败:`, error);
         }
+      },
+      /**
+       * 纠偏已保活实例:向对应子应用下发 tabNavigate,令其路由跳到记录当前 page。
+       * 未接线子应用无人处理 → 子应用仍经 tabRoute 回报旧页 → 记录回写,
+       * 自动退回"记录跟随子应用"旧行为,系统自洽。
+       * @param tab 已纠偏的 Tab 记录(取 id/page/query 构造载荷)
+       */
+      navigateTab(tab) {
+        // bus 为 wujie 未导出类型的 EventBus 实例(unknown 入参),断言到最小 $emit 形状
+        (bus as { $emit: (event: string, data?: unknown) => void }).$emit(appEvents.tabNavigate, {
+          id: tab.id,
+          page: tab.page,
+          query: tab.query,
+        });
       },
     },
     apps,

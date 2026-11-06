@@ -8,8 +8,8 @@ export default defineConfig({
   // virtual:micro-app-registry(micro-host 的 apps.ts 消费);各 app dev/build 用各自 config 自行装配
   plugins: [microAppRegistryPlugin()],
   staged: {
-    // 源码文件走完整 check(格式化 + lint + typecheck)
-    "*.{ts,tsx,vue,js,mjs,cjs}": "vp run check -- --fix",
+    // 源码文件走完整 check(格式化 + lint + typecheck);vendor 区在脚本内分流
+    "*.{ts,tsx,vue,js,mjs,cjs}": "node scripts/staged-check.mjs",
     // 纯配置/文档只格式化:Corsa typecheck 在 staged 无源文件时会误报
     // "No supported source files were selected"(json-only 提交的边界误伤)
     "*.{json,md,css,html,yaml,yml}": "vp run fmt -- --fix",
@@ -30,6 +30,14 @@ export default defineConfig({
   lint: withJsdoc({
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }, repoJsdocPlugin],
     options: { typeAware: true, typeCheck: true },
+    // 根项目模式的 Corsa typecheck(无文件参数调用 vp check 时)尊重本忽略清单:
+    // vendor 区(components/ui)与生成物/产物保持 registry 原样,不参与类型诊断
+    ignorePatterns: [
+      "packages/tu-design/src/components/ui/**",
+      "**/src/types/generated/**",
+      "**/src/styles/generated/**",
+      "**/public/libs/**",
+    ],
     rules: { "vite-plus/prefer-vite-plus-imports": "error" },
     // @repo/share 分层依赖方向:common ← ui ← components,禁止反向/跨层引用
     overrides: [

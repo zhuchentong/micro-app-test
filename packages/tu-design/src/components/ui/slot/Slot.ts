@@ -3,7 +3,11 @@ import type { VNode } from "vue";
 import type { ClassValue } from "clsx";
 import { cn } from "../../../lib/utils";
 
-/** 递归展平 `<slot />` 插槽出口（renderSlot）产生的 Fragment 包裹，取出真实子节点。 */
+/**
+ * 递归展平 `<slot />` 插槽出口（renderSlot）产生的 Fragment 包裹，取出真实子节点。
+ * @param children - 插槽渲染输出的 vnode 数组
+ * @returns 展平后的 vnode 数组（已剥离 Fragment 包裹层级）
+ */
 function flattenVNodes(children: VNode[]): VNode[] {
   const out: VNode[] = [];
   for (const child of children) {

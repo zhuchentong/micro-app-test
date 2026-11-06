@@ -10,21 +10,32 @@
     "./input": "./src/components/ui/input/index.ts",
     "./popover": "./src/components/ui/popover/index.ts",
     "./slot": "./src/components/ui/slot/index.ts",
+    "./table-render": "./src/components/ui/table-render/index.ts",
+    "./form-render": "./src/components/ui/form-render/index.ts",
+    "./toast": "./src/components/ui/toast/index.ts",
     "./lib/utils": "./src/lib/utils.ts",
     "./*": "./src/*"
   },
+  "scripts": {
+    "test": "vp test"
+  },
   "dependencies": {
     "@ark-ui/vue": "^5.39.2",
+    "@tanstack/vue-form": "^1.33.5",
+    "@tanstack/vue-table": "^8.21.3",
+    "@tanstack/vue-virtual": "^3.13.47",
+    "@zag-js/popper": "^1.43.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^3.7.0",
-    "tw-animate-css": "catalog:"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@repo/config-typescript": "workspace:*",
     "@repo/tu-design": "workspace:*",
+    "@types/node": "catalog:",
     "tailwindcss": "^4.3.3",
     "typescript": "catalog:",
+    "vite-plus": "catalog:",
     "vue": "catalog:"
   },
   "peerDependencies": {

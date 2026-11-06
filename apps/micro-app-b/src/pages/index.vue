@@ -19,8 +19,7 @@ const injectedTheme = computed(() => props?.theme ?? "-");
 
 <template>
   <main class="page">
-    <section class="card">
-      <h2>主应用注入的 props(启动快照)</h2>
+    <Card class="transition-colors" size="sm" title="主应用注入的 props(启动快照)">
       <dl>
         <dt>运行模式</dt>
         <dd>{{ isWujie() ? "wujie 微前端" : "独立运行" }}</dd>
@@ -30,10 +29,9 @@ const injectedTheme = computed(() => props?.theme ?? "-");
         <dd>{{ injectedTheme }}</dd>
       </dl>
       <p class="hint">props 仅在 startApp 时注入,切换主题后不会更新;实时状态见下方。</p>
-    </section>
+    </Card>
 
-    <section class="card">
-      <h2>实时状态(store 同步)</h2>
+    <Card class="transition-colors" size="sm" title="实时状态(store 同步)">
       <dl>
         <dt>用户</dt>
         <dd>{{ userStore.user.name || "—" }}</dd>
@@ -41,13 +39,12 @@ const injectedTheme = computed(() => props?.theme ?? "-");
         <dd>{{ themeStore.theme }}</dd>
       </dl>
       <p class="hint">经 host:state 同步,与主应用实时一致 —— 在主应用侧栏切换主题即可验证。</p>
-    </section>
+    </Card>
 
-    <section class="card">
-      <h2>保活验证</h2>
+    <Card class="transition-colors" size="sm" title="保活验证">
       <p class="hint">点击 +1 后切换到另一个子应用再切回,计数保留说明 wujie 保活生效。</p>
       <Counter />
-    </section>
+    </Card>
   </main>
 </template>
 
@@ -58,21 +55,6 @@ const injectedTheme = computed(() => props?.theme ?? "-");
   gap: 16px;
   padding: 20px;
   max-width: 560px;
-}
-
-.card {
-  border: 1px solid var(--app-border);
-  border-radius: 10px;
-  padding: 16px;
-  background: var(--app-bg-surface);
-  transition:
-    background-color 0.2s,
-    border-color 0.2s;
-}
-
-.card h2 {
-  margin: 0 0 12px;
-  font-size: 15px;
 }
 
 dl {

@@ -1,21 +1,13 @@
 <script setup lang="ts">
 import type { ClassValue } from "clsx";
 import type { PropType } from "vue";
-import {
-  computed,
-  getCurrentInstance,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  useAttrs,
-  useId,
-  useSlots,
-} from "vue";
+import { computed, onBeforeUnmount, useAttrs, useSlots } from "vue";
 import type { PopoverRootProps } from "@ark-ui/vue/popover";
 import { Popover as ArkPopover } from "@ark-ui/vue/popover";
 import { cn } from "../../../lib/utils";
-import { isInIframeRealm, isInWujie } from "../overlay-shared/sandbox";
 import { useControlledBoolean } from "../overlay-shared/useControlledBoolean";
+import { useOverlayIds } from "../overlay-shared/useOverlayIds";
+import { useSandboxTeleportTarget, withSandboxStrategy } from "../overlay-shared/useSandboxOverlay";
 
 /** 面板相对触发器的对齐方向 */
 type Align = "start" | "center" | "end";
@@ -78,28 +70,8 @@ const slots = useSlots();
 const attrs = useAttrs();
 
 // —— Teleport 目标解析：显式 to > shadow DOM / wujie graft 自动降级 > body ——
-// app._container 在 mount 的 render 完成后才赋值（runtime-core 3.5.43：render L4337
-// → 赋值 L4340），而子组件 onMounted 在 render 内同步执行、届时仍为 undefined，
-// 故检测再延后一个微任务（mount 调用栈结束后 _container 必已赋值），结果存 ref
-// 驱动 computed 重算；getCurrentInstance 仅 setup 同步上下文可用，须顶层捕获。
-// 共享 Vue（__MICRO_SHARED__）下各子应用 app._container 相互独立，检测按实例隔离；
-// 沙箱两类：真 shadow DOM 由 getRootNode() 命中；wujie graft 下 getRootNode/父链
-// 被 patch 伪装成 iframe 文档语义（实测），结构探测失效，须叠加官方标记位。
-// 其余微前端（qiankun / micro-app light DOM）body 即主文档 body，兜底正确
-const instance = getCurrentInstance();
-const inWujie = isInWujie();
-const detectedTarget = ref<string | HTMLElement>("body");
-onMounted(() => {
-  queueMicrotask(() => {
-    if (props.to) return;
-    const container = (instance?.appContext.app as { _container?: HTMLElement } | undefined)
-      ?._container;
-    if (container && (container.getRootNode() instanceof ShadowRoot || inWujie)) {
-      detectedTarget.value = container;
-    }
-  });
-});
-const teleportTarget = computed<string | HTMLElement>(() => props.to ?? detectedTarget.value);
+// 机制详注见 useSandboxTeleportTarget（Popover 0.5.3 沙箱修复的公共层抽离）
+const teleportTarget = useSandboxTeleportTarget(() => props.to);
 
 // —— 受控桥接（Dialog 同款）：Root 恒走受控，非受控语义由内部 ref 实现 ——
 const { isOpen, setOpen } = useControlledBoolean({
@@ -114,13 +86,22 @@ const { isOpen, setOpen } = useControlledBoolean({
 // 执行、capture 无优先级），不渲染 Trigger 是唯一可靠方式 ——
 const useNativeTrigger = computed(() => props.trigger === "click" && !props.disabled);
 
-// Anchor 模式的手动 aria 接线（补偿放弃 Trigger 的自动接线）：
-// 经 ids.content 定死面板 id，保证 aria-controls 可靠指向
-const contentId = useId();
-const rootIds = computed<Record<string, string> | undefined>(() => {
-  if (useNativeTrigger.value) return undefined;
-  const user = (attrs.ids ?? {}) as Record<string, string>;
-  return { ...user, content: contentId };
+// —— Anchor 模式的手动 aria 接线（补偿放弃 Trigger 的自动接线）——
+// —— ids 全量覆盖（无冒号）详注见 useOverlayIds（wujie patch getElementById
+// 对 zag 缺省冒号 id `popover:{id}:*` 每次查询抛 SyntaxError 刷警告）；
+// trigger 为静态 id，仅支持单触发器（本 wrapper 只渲染单个 Trigger/Anchor）——
+const { ids: rootIds, resolveId } = useOverlayIds(attrs, {
+  primary: "content",
+  parts: [
+    "content",
+    "title",
+    "description",
+    "anchor",
+    "trigger",
+    "closeTrigger",
+    "positioner",
+    "arrow",
+  ],
 });
 const anchorAria = computed(() =>
   useNativeTrigger.value
@@ -128,7 +109,7 @@ const anchorAria = computed(() =>
     : {
         "aria-haspopup": "dialog" as const,
         "aria-expanded": isOpen.value,
-        "aria-controls": contentId,
+        "aria-controls": resolveId("content"), // user 覆盖优先，与面板实际 id 一致
       },
 );
 
@@ -178,24 +159,18 @@ onBeforeUnmount(clearTimer);
 
 // side/align → Ark positioning.placement（12 方位，居中不带对齐后缀）；
 // 外部经 attrs 传入的 positioning 已显式指定 placement 时以其为准，其余字段原样合并。
-// iframe realm（wujie graft / iframe 型沙箱 / iframe 嵌入）且未显式指定 strategy 时
-// 默认 fixed：非 graft 拓扑下 fixed 与 absolute 坐标等价（零副作用），graft 拓扑
-// （wujie）absolute 包含块错位，fixed 是唯一正确解 —— 详见 overlay-shared/sandbox.ts
-const inIframeRealm = isInIframeRealm();
+// iframe realm 下 strategy 默认 fixed（absolute 包含块错位修正），机制详注见
+// withSandboxStrategy / overlay-shared/sandbox.ts —— 沙箱修复的公共层抽离
 const rootPositioning = computed<ArkPositioning>(() => {
   const user = (attrs.positioning ?? {}) as ArkPositioning;
   const placement = (
     props.align === "center" ? props.side : `${props.side}-${props.align}`
   ) as ArkPlacement;
-  const merged: ArkPositioning = {
+  return withSandboxStrategy(user, {
     ...user,
     placement,
     sameWidth: props.matchTriggerWidth || user.sameWidth,
-  };
-  if (inIframeRealm && user.strategy == null) {
-    merged.strategy = "fixed";
-  }
-  return merged;
+  });
 });
 
 // 面板样式：内置类 + contentClass + contentProps.class 三方合并（twMerge 自动去冲突，后者优先）

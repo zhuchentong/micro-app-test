@@ -1,0 +1,6 @@
+{
+  "ignore": {
+    "valibot": "上游 stale 元数据:源码零引用(schema 参数为 unknown,由消费方传 Standard Schema 直透 TanStack validators)",
+    "tw-animate-css": "真实消费方为 themes(tokens.css @import),themes 已自行声明 catalog:,此处冗余"
+  }
+}

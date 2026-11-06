@@ -16,6 +16,12 @@ export const appEvents = {
   tabRoute: "host:tab-route",
   /** 子应用 → 主应用:Tab 标题回报(document.title 仅跟随激活 Tab) */
   tabTitle: "host:tab-title",
+  /**
+   * 主应用 → 子应用:Tab 纠偏导航(host 改写漂移记录后,令已保活实例的路由跳回记录 page)。
+   * 退化语义:未接线子应用收到事件无人处理 → 子应用仍经 tabRoute 回报旧页 →
+   * host applyTabRoute 回写记录,自动退回"记录跟随子应用"旧行为,系统自洽。
+   */
+  tabNavigate: "host:tab-navigate",
   /** 子应用 → 主应用:上报侧栏菜单(host 静态注册为兜底,上报后覆盖) */
   menu: "sub:menu",
   /** 子应用 → 主应用:登录成功上报(授权网关校验通过,host 据此写入用户态并切换视图) */
@@ -66,6 +72,16 @@ export interface TabRoutePayload {
 export interface TabTitlePayload {
   id: string;
   title: string;
+}
+
+/** host:tab-navigate 事件 payload(host 纠偏漂移 Tab 后下发的目标路由) */
+export interface TabNavigatePayload {
+  /** 注入的 props.tab.id(多实例保活下全实例监听,子应用据此过滤非本 Tab 事件) */
+  id: string;
+  /** 记录被纠偏后的目标页面路径 */
+  page: string;
+  /** 目标查询参数(记录无 query 时缺省) */
+  query?: Record<string, string>;
 }
 
 /** 侧栏菜单项(host 静态注册与子应用上报共用同一形状) */

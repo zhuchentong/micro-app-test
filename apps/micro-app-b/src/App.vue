@@ -42,20 +42,22 @@ watch(
       <span class="user">👤 {{ userStore.user.name }}</span>
       <nav>
         <!-- 非锚点导航:wujie shadow 内 <a> href 会被绝对化到子应用 origin,修饰键/中键点击会跳出宿主 -->
-        <button
+        <Button
           type="button"
-          :class="{ active: navActive('/') }"
+          variant="ghost"
+          :class="navActive('/') ? 'active' : undefined"
           @click="router.push({ name: 'home' })"
         >
           首页
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          :class="{ active: navActive('/about') }"
+          variant="ghost"
+          :class="navActive('/about') ? 'active' : undefined"
           @click="router.push({ name: 'about' })"
         >
           通信演示
-        </button>
+        </Button>
       </nav>
     </header>
 
@@ -95,15 +97,7 @@ nav {
   margin-left: auto;
 }
 
-nav button {
-  color: var(--app-text-2);
-  font-size: 14px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
+/* active 态语义:ghost Button 标准外观之上叠加选中色/字重 */
 nav button.active {
   color: var(--app-text-1);
   font-weight: 600;

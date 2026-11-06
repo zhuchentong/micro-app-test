@@ -8,13 +8,15 @@ import { buildTabKey } from "@repo/wujie-kit/host";
 interface Ensured {
   id: string;
   app: string;
+  page: string;
   containerN: number;
 }
 
-/** 宿主副作用 mock:记录实例的创建/销毁,不触碰真实 wujie */
+/** 宿主副作用 mock:记录实例的创建/销毁与纠偏下发,不触碰真实 wujie */
 function createFakeOps() {
   const ensured: Ensured[] = [];
   const destroyed: string[] = [];
+  const navigated: Array<{ id: string; page: string; query?: Record<string, string> }> = [];
   /** 可切换的失败开关:验证启动失败后的回滚与重试 */
   const control = { failEnsure: false };
   const ops: TabOps = {
@@ -23,13 +25,16 @@ function createFakeOps() {
         onFailed?.(new Error("boom"));
         return;
       }
-      ensured.push({ id: tab.id, app: tab.app, containerN: tab.n });
+      ensured.push({ id: tab.id, app: tab.app, page: tab.page, containerN: tab.n });
     },
     async destroyInstance(tab) {
       destroyed.push(tab.id);
     },
+    navigateTab(tab) {
+      navigated.push({ id: tab.id, page: tab.page, query: tab.query });
+    },
   };
-  return { ops, ensured, destroyed, control };
+  return { ops, ensured, destroyed, navigated, control };
 }
 
 /** node 环境下的 window/document/sessionStorage 最小桩(tabs store 仅用这几处宿主 API) */
@@ -220,7 +225,9 @@ test("启动恢复:sessionStorage 记录落回 cold,地址栏 Tab 按需重建",
 
   expect(tabs.tabs).toHaveLength(2);
   expect(tabs.activeId).toBe("sub-a|/products|");
-  expect(ensured).toEqual([{ id: "sub-a|/products|", app: "sub-a", containerN: 7 }]);
+  expect(ensured).toEqual([
+    { id: "sub-a|/products|", app: "sub-a", page: "/products", containerN: 7 },
+  ]);
   // seq 必须覆盖恢复记录的 max n,后续新 Tab 不撞容器号
   await tabs.openTab("sub-a", "/about");
   expect(tabs.tabs[2].n).toBe(8);
@@ -313,4 +320,222 @@ test("endSession 在 activate 在途时进入:销毁清单包含刚建好的实�
   expect(tabs.tabs).toHaveLength(0);
   expect(ensured).toHaveLength(1);
   expect(destroyed).toHaveLength(1);
+});
+
+test("S1 归一化:恢复态漂移记录改写 id 为 canonical,activeId 经映射修正", async () => {
+  const { ops, ensured } = createFakeOps();
+  configureTabOps(ops, apps);
+  href = "http://localhost:7100/"; // 地址栏不指向子应用:仅验证快照归一化与激活
+  sessionStorageStub.setItem(
+    TABS_STORAGE_KEY,
+    JSON.stringify({
+      tabs: [
+        {
+          id: "sub-a|/|", // 身份停在 /,内容已被页内导航漂到 /products
+          app: "sub-a",
+          page: "/products",
+          title: "产品",
+          state: "active",
+          lastActivatedAt: 123,
+          n: 3,
+        },
+      ],
+      activeId: "sub-a|/|",
+      seq: 3,
+    }),
+  );
+
+  const tabs = useTabsStore();
+  await tabs.init(apps);
+
+  expect(tabs.tabs).toHaveLength(1);
+  expect(tabs.tabs[0]!.id).toBe("sub-a|/products|");
+  expect(tabs.tabs[0]!.n).toBe(3);
+  expect(tabs.activeId).toBe("sub-a|/products|");
+  // 归一化后的记录按新身份激活重建,实例收到归一化后的 page
+  expect(ensured).toEqual([
+    { id: "sub-a|/products|", app: "sub-a", page: "/products", containerN: 3 },
+  ]);
+});
+
+test("S1 撞车合并:规范记录优先保留,被删漂移记录的 activeId 改指保留者", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  sessionStorageStub.setItem(
+    TABS_STORAGE_KEY,
+    JSON.stringify({
+      tabs: [
+        {
+          id: "sub-a|/|", // 漂移:身份 /,内容 /products(与规范记录撞车)
+          app: "sub-a",
+          page: "/products",
+          title: "产品",
+          state: "active",
+          lastActivatedAt: 1,
+          n: 2,
+        },
+        {
+          id: "sub-a|/products|", // 规范记录:id === canonical,优先保留
+          app: "sub-a",
+          page: "/products",
+          title: "产品",
+          state: "background",
+          lastActivatedAt: 2,
+          n: 7,
+        },
+      ],
+      activeId: "sub-a|/|", // 被删记录:经映射改指规范保留者
+      seq: 7,
+    }),
+  );
+
+  const tabs = useTabsStore();
+  await tabs.init(apps);
+
+  expect(tabs.tabs).toHaveLength(1);
+  expect(tabs.tabs[0]!.id).toBe("sub-a|/products|");
+  expect(tabs.tabs[0]!.n).toBe(7); // 保留的是规范记录自身的 n
+  expect(tabs.activeId).toBe("sub-a|/products|");
+});
+
+test("S1 撞车合并:双方均漂移保留 n 较小者,activeId 改指保留者", async () => {
+  const { ops } = createFakeOps();
+  configureTabOps(ops, apps);
+  sessionStorageStub.setItem(
+    TABS_STORAGE_KEY,
+    JSON.stringify({
+      tabs: [
+        {
+          id: "sub-a|/|", // 漂移:n 小 → 保留
+          app: "sub-a",
+          page: "/products",
+          title: "产品",
+          state: "active",
+          lastActivatedAt: 1,
+          n: 2,
+        },
+        {
+          id: "sub-a|/about|", // 漂移:n 大 → 被删
+          app: "sub-a",
+          page: "/products",
+          title: "产品",
+          state: "background",
+          lastActivatedAt: 2,
+          n: 5,
+        },
+      ],
+      activeId: "sub-a|/about|", // 被删记录:改指 n 小保留者
+      seq: 5,
+    }),
+  );
+
+  const tabs = useTabsStore();
+  await tabs.init(apps);
+
+  expect(tabs.tabs).toHaveLength(1);
+  expect(tabs.tabs[0]!.id).toBe("sub-a|/products|");
+  expect(tabs.tabs[0]!.n).toBe(2);
+  expect(tabs.activeId).toBe("sub-a|/products|");
+});
+
+test("S1 时序:归一化先于 URL 匹配,漂移身份不再命中地址栏,新建干净 Tab 激活", async () => {
+  const { ops, ensured } = createFakeOps();
+  configureTabOps(ops, apps);
+  href = "http://localhost:7100/sub-a"; // 直访 /sub-a → 解析 (sub-a, "/")
+  sessionStorageStub.setItem(
+    TABS_STORAGE_KEY,
+    JSON.stringify({
+      tabs: [
+        {
+          id: "sub-a|/|", // 僵尸身份:内容已漂到 /table
+          app: "sub-a",
+          page: "/table",
+          title: "表格",
+          state: "active",
+          lastActivatedAt: 9,
+          n: 1,
+        },
+      ],
+      activeId: "sub-a|/|",
+      seq: 1,
+    }),
+  );
+
+  const tabs = useTabsStore();
+  await tabs.init(apps);
+
+  // 归一化后僵尸身份已变 sub-a|/table|,URL (sub-a,"/") 匹配不到 → 新建干净 Tab
+  expect(tabs.tabs).toHaveLength(2);
+  expect(tabs.tabs[0]!.id).toBe("sub-a|/table|");
+  expect(tabs.tabs[0]!.state).toBe("cold"); // 未被 URL 激活,保持冷置
+  const fresh = tabs.tabs[1]!;
+  expect(fresh.id).toBe("sub-a|/|");
+  expect(fresh.page).toBe("/");
+  expect(fresh.n).toBe(2);
+  expect(tabs.activeId).toBe("sub-a|/|");
+  // 激活的是干净记录:地址栏停在 /sub-a,不被漂移内容改写为 /sub-a/table
+  expect(href).toBe("/sub-a");
+  expect(ensured).toEqual([{ id: "sub-a|/|", app: "sub-a", page: "/", containerN: 2 }]);
+});
+
+test("S2 纠偏:openTab 命中漂移记录且实例 background → navigateTab 下发、记录更新", async () => {
+  const { ops, navigated } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("sub-a", "/");
+  const homeId = tabs.tabs[0]!.id;
+  // 模拟页内导航漂移:身份 sub-a|/| 的内容漂到 /products
+  tabs.applyTabRoute({ id: homeId, page: "/products" });
+  await tabs.openTab("sub-a", "/about"); // 首页 Tab 转 background
+  expect(tabs.tabs[0]!.state).toBe("background");
+
+  // 会话内菜单重开漂移 Tab:请求 / 与记录当前内容 /products 漂移 → 纠偏
+  const created = await tabs.openTab("sub-a", "/");
+  expect(created).toBe(false); // 去重命中,纠偏也不算新建
+  expect(tabs.tabs[0]!.page).toBe("/");
+  expect(tabs.tabs[0]!.query).toBeUndefined();
+  expect(navigated).toEqual([{ id: homeId, page: "/" }]);
+  expect(href).toBe("/sub-a"); // 地址栏回到身份对应路径,不再停留 /sub-a/products
+});
+
+test("S2 纠偏:实例 cold 时不下发 navigateTab,ensureInstance 收到新 page", async () => {
+  const { ops, ensured, navigated } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("sub-a", "/");
+  const homeId = tabs.tabs[0]!.id;
+  tabs.applyTabRoute({ id: homeId, page: "/products" });
+  tabs.tabs[0]!.state = "cold"; // 模拟 LRU 降级后的 cold 漂移记录
+
+  await tabs.openTab("sub-a", "/");
+
+  expect(navigated).toEqual([]); // 无保活实例,不发生事件下发
+  expect(tabs.tabs[0]!.page).toBe("/");
+  // 首开 + 纠偏重建各一次;重建这一次 ensureInstance 必须读到纠偏后的 page(而非漂移值)
+  expect(ensured).toHaveLength(2);
+  expect(ensured.at(-1)).toEqual({
+    id: homeId,
+    app: "sub-a",
+    page: "/",
+    containerN: tabs.tabs[0]!.n,
+  });
+});
+
+test("无 requested 的 activate 语义不变:URL 跟随实例当前内容,不下发纠偏", async () => {
+  const { ops, navigated } = createFakeOps();
+  configureTabOps(ops, apps);
+  const tabs = useTabsStore();
+
+  await tabs.openTab("sub-a", "/");
+  const homeId = tabs.tabs[0]!.id;
+  tabs.applyTabRoute({ id: homeId, page: "/products" });
+  await tabs.openTab("sub-a", "/about"); // 首页 background
+
+  await tabs.activate(homeId); // TabsBar / closeTab 邻居激活场景:无 requested
+
+  expect(navigated).toEqual([]); // 不纠偏
+  expect(tabs.tabs[0]!.page).toBe("/products"); // 内容不被动
+  expect(href).toBe("/sub-a/products"); // 地址栏跟随实例
 });

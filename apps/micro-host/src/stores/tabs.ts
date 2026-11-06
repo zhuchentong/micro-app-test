@@ -35,6 +35,8 @@ export interface TabOps {
   ensureInstance(tab: TabRecord, onFailed?: (error: unknown) => void): void;
   /** 销毁保活实例(LRU 降级 / 关闭 Tab) */
   destroyInstance(tab: TabRecord): Promise<void>;
+  /** 纠偏已保活实例:向子应用下发 tabNavigate,令其路由跳到记录当前 page(身份不变) */
+  navigateTab(tab: TabRecord): void;
 }
 
 let ops: TabOps | null = null;
@@ -136,6 +138,46 @@ function loadSnapshot(): TabsSnapshot | null {
 }
 
 /**
+ * S1 恢复态归一化:快照记录可能已被页内导航漂移(身份 id 冻结、page/query 漂移),
+ * 把 id 改写为 buildTabKey(app, page, query) 的当前规范值,并对撞车确定性合并。
+ *
+ * 合并判据(确定性,不可用 lastActivatedAt——快照恢复后恒为 0):
+ * 1. id 已等于 canonical 的记录优先保留;
+ * 2. 双方均漂移保留 n 较小者(并列取先出现,sort 稳定);
+ * 3. 被删记录的 activeId 引用经旧→新映射改指保留者。
+ *
+ * @param tabs 恢复的快照记录(winner 的 id 就地改写)
+ * @param activeId 快照中的激活 id
+ * @returns 归一化后的记录列表与激活 id
+ */
+function normalizeRestoredTabs(
+  tabs: TabRecord[],
+  activeId: string | null,
+): { tabs: TabRecord[]; activeId: string | null } {
+  const groups = new Map<string, TabRecord[]>();
+  for (const tab of tabs) {
+    const canonical = buildTabKey(tab.app, tab.page, tab.query);
+    const group = groups.get(canonical);
+    if (group) group.push(tab);
+    else groups.set(canonical, [tab]);
+  }
+
+  const kept: TabRecord[] = [];
+  /** 旧 id → 保留记录(含 winner 自身),供 activeId 修正 */
+  const ownerOf = new Map<string, TabRecord>();
+  for (const [canonical, group] of groups) {
+    const winner =
+      group.find((tab) => tab.id === canonical) ?? [...group].sort((a, b) => a.n - b.n)[0]!;
+    // 先建旧 id 映射再改写 winner.id(winner 漂移时旧 id 仅存在于映射中)
+    for (const tab of group) ownerOf.set(tab.id, winner);
+    winner.id = canonical;
+    kept.push(winner);
+  }
+  const winnerOfActive = activeId !== null ? ownerOf.get(activeId) : undefined;
+  return { tabs: kept, activeId: winnerOfActive ? winnerOfActive.id : activeId };
+}
+
+/**
  * Tab 未回报标题时的兜底:注册菜单命中取菜单名,否则取路径末段首字母大写
  * @param app 子应用 key
  * @param page 页面路径
@@ -192,9 +234,15 @@ export const useTabsStore = defineStore("tabs", {
       registry = apps;
       const saved = loadSnapshot();
       if (saved) {
-        this.tabs = saved.tabs;
         // seq 必须覆盖已有 tab.n,避免重建 tab-container-N 撞号
         this.seq = Math.max(saved.seq, ...saved.tabs.map((tab) => tab.n), 0);
+        // S1 归一化,必须先于下方 parseTabUrl 匹配:漂移记录(如身份 sub-a|/| 的内容
+        // 已漂到 /table)若先参与 URL 匹配,直访 /sub-a 会按旧身份命中僵尸并激活漂移
+        // 内容(地址栏被改写为 /sub-a/table),归一化放在匹配之后就修不回去了。
+        // 先归一化,URL 按 canonical 匹配不到漂移身份 → 新建干净 Tab 激活。
+        const normalized = normalizeRestoredTabs(saved.tabs, saved.activeId);
+        this.tabs = normalized.tabs;
+        this.activeId = normalized.activeId;
       }
 
       const parsed = parseTabUrl(window.location.href, registry);
@@ -219,17 +267,21 @@ export const useTabsStore = defineStore("tabs", {
       }
 
       this.persist();
+      // 不传 requested:S1 已保证恢复态 id === buildTabKey(当前内容),恢复路径数学上
+      // 不可达漂移,激活语义与 TabsBar 一致(URL 跟随实例)
       if (this.activeId) await this.activate(this.activeId);
     },
 
     /**
-     * 打开/激活 Tab:确定性去重(同参数复用),cold 先建实例
+     * 打开/激活 Tab:确定性去重(同参数复用),cold 先建实例。
+     * 激活时携带请求内容 { page, query }:记录内容与请求漂移(页内导航改写了内容)时纠偏。
      * @param app 子应用 key(未注册则报错并忽略)
      * @param page 页面路径
      * @param query 路由查询参数(参与去重键)
      * @param title 可选标题,缺省走 defaultTitle 兜底
      * @returns 本次是否新建了 Tab(去重命中已有 Tab 时为 false,
-     *          调用方据此决定是否应用子应用默认布局——激活已有 Tab 不改变布局)
+     *          调用方据此决定是否应用子应用默认布局——无 requested 激活不改变布局;
+     *          带 requested 且记录内容与请求漂移时纠偏,此时 created 仍为 false)
      */
     async openTab(
       app: string,
@@ -257,7 +309,8 @@ export const useTabsStore = defineStore("tabs", {
         };
         this.tabs.push(tab);
       }
-      await this.activate(id);
+      // 新建记录传参无害(内容恒等,不触发纠偏);命中漂移记录时经 activate 纠偏
+      await this.activate(id, { page, query });
       return created;
     },
 
@@ -271,10 +324,17 @@ export const useTabsStore = defineStore("tabs", {
     },
 
     /**
-     * 激活 Tab:实例按需重建、地址栏与 sessionStorage 同步、超限触发 LRU 降级
+     * 激活 Tab:实例按需重建、地址栏与 sessionStorage 同步、超限触发 LRU 降级。
+     * 带 requested 时纠偏:记录内容与请求漂移(页内导航改写了 page/query)则改写记录,
+     * 已保活实例经 navigateTab 下发跳回,cold 实例按新内容启动。
      * @param id 目标 Tab 的确定性去重键
+     * @param requested 期望的页面内容(openTab 传入;无参调用 URL 跟随实例当前内容,
+     *          TabsBar / closeTab 邻居激活等场景语义不变)
      */
-    async activate(id: string): Promise<void> {
+    async activate(
+      id: string,
+      requested?: { page: string; query?: Record<string, string> },
+    ): Promise<void> {
       const tab = this.tabs.find((item) => item.id === id);
       if (!tab) {
         console.error(`[tabs] 未知的 Tab: ${id}`);
@@ -284,6 +344,21 @@ export const useTabsStore = defineStore("tabs", {
       // 同 id 有在途实例化:先等它落定,避免第二个调用方抢先把状态置 active
       const inflight = pendingEnsure.get(id);
       if (inflight) await inflight;
+
+      // S2 纠偏:比较"请求内容 vs 记录当前内容"(复用 buildTabKey 字符串,不手写深比较)。
+      // 不能比 tab.id——openTab 命中条件已保证请求 === 身份(身份冻结),恒判等;
+      // 页内导航只漂移内容,漂移态下 id ≠ buildTabKey(当前内容),与记录内容比较才有效。
+      // background/active 实例经 navigateTab 下发跳转;cold 无实例,下方 ensureInstance
+      // 读到改写后的 tab.page 启动,无需额外动作。
+      if (
+        requested &&
+        buildTabKey(tab.app, requested.page, requested.query) !==
+          buildTabKey(tab.app, tab.page, tab.query)
+      ) {
+        tab.page = requested.page;
+        tab.query = requested.query;
+        if (tab.state !== "cold") assertOps().navigateTab(tab);
+      }
 
       let created = false;
       if (tab.state === "cold") {

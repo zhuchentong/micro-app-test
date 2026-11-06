@@ -17,6 +17,8 @@ export interface ControlledBoolean {
 /**
  * 业务组件惯例：Ark Root 恒走受控，非受控语义由内部 ref 实现。
  * `controlled()` 返回 undefined 时用内部值，否则永远跟随外部 prop。
+ * @param options - 受控/非受控配置：受控值读取器、非受控初值与变更回调
+ * @returns isOpen（当前开合状态）与 setOpen（写入状态并同步 onChange）
  */
 export function useControlledBoolean(options: ControlledBooleanOptions): ControlledBoolean {
   const internal = ref(options.defaultValue?.() ?? false);
