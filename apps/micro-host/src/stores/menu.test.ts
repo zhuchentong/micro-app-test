@@ -10,15 +10,16 @@ test("未上报时回落静态注册表菜单(manifest 单源:兜底与子应用
   // 静态兜底来自 micro-app-demo/app.manifest.json(分组形状),整体比较守住单源
   expect(menu.menuFor("micro-app-demo")).toEqual([
     {
-      label: "示例",
+      label: "页面布局",
       icon: "dashboard",
       children: [
-        { label: "页面布局", path: "/" },
+        { label: "默认布局", path: "/" },
         { label: "表格布局", path: "/table" },
         { label: "表单页", path: "/form" },
-        { label: "产品", path: "/products" },
       ],
     },
+    { label: "产品", children: [{ label: "产品列表", path: "/products" }] },
+    { label: "路由", children: [{ label: "路由返回", path: "/goods" }] },
   ]);
 });
 

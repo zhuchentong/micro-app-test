@@ -27,13 +27,12 @@ function navBack(): void {
         class="breadcrumb-back"
         type="button"
         variant="ghost"
-        :disabled="!tabs.canBackActive"
+        v-if="tabs.canBackActive"
         aria-label="返回上一页"
         title="返回上一页(回退后不可前进)"
         @click="navBack"
       >
         <icon-tdesign-arrow-left />
-        返回
       </Button>
       <span class="breadcrumb-root">工作台</span>
       <template v-if="tabs.activeTab">
@@ -175,7 +174,7 @@ function navBack(): void {
 
 /* wujie 容器元素默认 display:inline 且无高度,高度链在此断链:
    block 化 + 撑满,子应用 #app 的 height:100% 才有确定父高 */
-.tab-pane > wujie-app {
+.tab-pane>wujie-app {
   display: block;
   height: 100%;
 }

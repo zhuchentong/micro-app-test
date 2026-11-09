@@ -4,7 +4,7 @@
  *
  * 单应用形态:micro-app-demo 是唯一 tab 子应用(micro-app-demo),跨应用保活切换、
  * 多 app 图标导航/面板菜单场景不再被本 smoke 覆盖;链路 4 的保活切换改为
- * 同应用双 Tab(页面布局 ↔ 表格布局,tabKey=app|page 仍为独立保活实例,语义等价)。
+ * 同应用双 Tab(默认布局 ↔ 表格布局,tabKey=app|page 仍为独立保活实例,语义等价)。
  *
  * 用法: node scripts/e2e.mjs   (或仓库根 `vp run e2e`)
  * 前提: 全局安装 agent-browser(>=0.39);缺失时 fail-fast 并给出安装指引。
@@ -475,7 +475,7 @@ async function flow2OpenTab() {
   const state = await evalJson(
     "(() => ({ url: location.pathname," +
       " tabs: document.querySelectorAll('.tab-item').length," +
-      " activeHome: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('页面布局')," +
+      " activeHome: (document.querySelector('.tab-item--active .tab-title')?.textContent || '').includes('默认布局')," +
       " title: document.title.includes('测试 Demo') }))()",
   );
   expect("地址栏自管 /micro-app-demo", state.url, "/micro-app-demo");
@@ -554,8 +554,8 @@ async function flow4KeepAlive() {
     "表格页 Tab 激活",
   );
   await waitAppText("查 询");
-  const back = await clickTabByTitle("页面布局");
-  expect("切回页面布局 Tab", back.clicked, true);
+  const back = await clickTabByTitle("默认布局");
+  expect("切回默认布局 Tab", back.clicked, true);
   await waitFn("location.pathname === '/micro-app-demo'", "切回就绪");
   const counter = await evalJson(
     "(() => { const pane = [...document.querySelectorAll('.tab-pane')].find(x => x.style.display !== 'none');" +
